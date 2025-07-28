@@ -59,7 +59,7 @@ function AdminSignUp() {
       )
       
       // Store admin user data in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      await setDoc(doc(db, 'Admin', userCredential.user.uid), {
         name: formData.name,
         email: formData.email,
         role: 'admin',

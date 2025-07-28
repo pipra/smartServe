@@ -8,6 +8,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
         e.preventDefault();
@@ -16,13 +17,42 @@ export default function Login() {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             console.log("User logged in Successfully!!");
             
-            // Get user data from Firestore to check role
-            const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+            // Check multiple collections to find user data
+            let userData = null;
+            let userRole = null;
             
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                const userRole = userData.role;
+            // First, try to find user in Admin collection
+            const adminDoc = await getDoc(doc(db, 'Admin', userCredential.user.uid));
+            if (adminDoc.exists()) {
+                userData = adminDoc.data();
+                userRole = 'admin';
+            } else {
+                // Then try Waiters collection
+                const waiterDoc = await getDoc(doc(db, 'Waiters', userCredential.user.uid));
+                if (waiterDoc.exists()) {
+                    userData = waiterDoc.data();
+                    userRole = 'waiter';
+                } else {
+                    // Finally try users collection (for other roles)
+                    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+                    if (userDoc.exists()) {
+                        userData = userDoc.data();
+                        userRole = userData.role;
+                    }
+                }
+            }
+            
+            if (userData) {
+                // Check if waiter account is approved
+                if (userRole === 'waiter' && (!userData.approval || userData.status === 'pending')) {
+                    setError('Your waiter account is pending admin approval. Please wait for approval before logging in.');
+                    setIsLoading(false);
+                    return;
+                }
                 
+
+                console.log(userData);
+
                 // Redirect based on user role
                 switch (userRole) {
                     case 'admin':
@@ -39,13 +69,16 @@ export default function Login() {
                         break;
                     default:
                         window.location.href = "/home";
+                        console.log("Unknown user role, redirecting to home.");
                 }
             } else {
                 // If no user document exists, redirect to home
+                console.log("No user document found, redirecting to home.");
                 window.location.href = "/home";
             }
         } catch(error) {
             console.log(error.message);
+            setError(error.message);
         } finally {
             setIsLoading(false);
         }
@@ -68,6 +101,13 @@ export default function Login() {
         {/* Login Form */}
         <div className="bg-white rounded-xl shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2 text-left">
@@ -199,14 +239,14 @@ export default function Login() {
           </div>
 
           {/* Admin */}
-          {/* <div className="mt-6 text-center">
+          <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Want to be an Admin?{' '}
               <a href="/adminSignUp" className="font-medium text-purple-600 hover:text-purple-500">
                 Sign Up
               </a>
             </p>
-          </div> */}
+          </div>
           
         </div>
       </div>
