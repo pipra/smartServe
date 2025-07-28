@@ -33,11 +33,18 @@ export default function Login() {
                     userData = waiterDoc.data();
                     userRole = 'waiter';
                 } else {
-                    // Finally try users collection (for other roles)
-                    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-                    if (userDoc.exists()) {
-                        userData = userDoc.data();
-                        userRole = userData.role;
+                    // Then try Chefs collection
+                    const chefDoc = await getDoc(doc(db, 'Chefs', userCredential.user.uid));
+                    if (chefDoc.exists()) {
+                        userData = chefDoc.data();
+                        userRole = 'chef';
+                    } else {
+                        // Finally try users collection (for other roles)
+                        const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+                        if (userDoc.exists()) {
+                            userData = userDoc.data();
+                            userRole = userData.role;
+                        }
                     }
                 }
             }
@@ -46,6 +53,13 @@ export default function Login() {
                 // Check if waiter account is approved
                 if (userRole === 'waiter' && (!userData.approval || userData.status === 'pending')) {
                     setError('Your waiter account is pending admin approval. Please wait for approval before logging in.');
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // Check if chef account is approved
+                if (userRole === 'chef' && (!userData.approval || userData.status === 'pending')) {
+                    setError('Your chef account is pending admin approval. Please wait for approval before logging in.');
                     setIsLoading(false);
                     return;
                 }

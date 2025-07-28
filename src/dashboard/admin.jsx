@@ -6,40 +6,65 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [pendingWaiters, setPendingWaiters] = useState([])
   const [allWaiters, setAllWaiters] = useState([])
+  const [pendingChefs, setPendingChefs] = useState([])
+  const [allChefs, setAllChefs] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchWaiters()
+    fetchData()
   }, [])
 
-  const fetchWaiters = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
       
       // Fetch pending waiters
-      const pendingQuery = query(
+      const pendingWaitersQuery = query(
         collection(db, 'Waiters'),
         where('status', '==', 'pending')
       )
-      const pendingSnapshot = await getDocs(pendingQuery)
-      const pending = pendingSnapshot.docs.map(doc => ({
+      const pendingWaitersSnapshot = await getDocs(pendingWaitersQuery)
+      const pendingWaitersData = pendingWaitersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
-      setPendingWaiters(pending)
+      setPendingWaiters(pendingWaitersData)
 
       // Fetch all waiters for management
       const waitersQuery = query(
         collection(db, 'Waiters')
       )
       const waitersSnapshot = await getDocs(waitersQuery)
-      const waiters = waitersSnapshot.docs.map(doc => ({
+      const waitersData = waitersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
-      setAllWaiters(waiters)
+      setAllWaiters(waitersData)
+
+      // Fetch pending chefs
+      const pendingChefsQuery = query(
+        collection(db, 'Chefs'),
+        where('status', '==', 'pending')
+      )
+      const pendingChefsSnapshot = await getDocs(pendingChefsQuery)
+      const pendingChefsData = pendingChefsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setPendingChefs(pendingChefsData)
+
+      // Fetch all chefs for management
+      const chefsQuery = query(
+        collection(db, 'Chefs')
+      )
+      const chefsSnapshot = await getDocs(chefsQuery)
+      const chefsData = chefsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setAllChefs(chefsData)
     } catch (error) {
-      console.error('Error fetching waiters:', error)
+      console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
     }
@@ -54,7 +79,7 @@ export default function AdminDashboard() {
       })
       
       // Refresh the data
-      fetchWaiters()
+      fetchData()
       alert('Waiter approved successfully!')
     } catch (error) {
       console.error('Error approving waiter:', error)
@@ -71,7 +96,7 @@ export default function AdminDashboard() {
       })
       
       // Refresh the data
-      fetchWaiters()
+      fetchData()
       alert('Waiter rejected successfully!')
     } catch (error) {
       console.error('Error rejecting waiter:', error)
@@ -83,11 +108,59 @@ export default function AdminDashboard() {
     if (window.confirm('Are you sure you want to permanently delete this waiter?')) {
       try {
         await deleteDoc(doc(db, 'Waiters', waiterId))
-        fetchWaiters()
+        fetchData()
         alert('Waiter deleted successfully!')
       } catch (error) {
         console.error('Error deleting waiter:', error)
         alert('Failed to delete waiter')
+      }
+    }
+  }
+
+  // Chef management functions
+  const approveChef = async (chefId) => {
+    try {
+      await updateDoc(doc(db, 'Chefs', chefId), {
+        status: 'active',
+        approval: true,
+        approvedAt: new Date().toISOString()
+      })
+      
+      // Refresh the data
+      fetchData()
+      alert('Chef approved successfully!')
+    } catch (error) {
+      console.error('Error approving chef:', error)
+      alert('Failed to approve chef')
+    }
+  }
+
+  const rejectChef = async (chefId) => {
+    try {
+      await updateDoc(doc(db, 'Chefs', chefId), {
+        status: 'rejected',
+        approval: false,
+        rejectedAt: new Date().toISOString()
+      })
+      
+      // Refresh the data
+      fetchData()
+      alert('Chef rejected successfully!')
+    } catch (error) {
+      console.error('Error rejecting chef:', error)
+      alert('Failed to reject chef')
+    }
+  }
+
+  const deleteChef = async (chefId) => {
+    if (window.confirm('Are you sure you want to permanently delete this chef?')) {
+      try {
+        await deleteDoc(doc(db, 'Chefs', chefId))
+        fetchData()
+        alert('Chef deleted successfully!')
+      } catch (error) {
+        console.error('Error deleting chef:', error)
+        alert('Failed to delete chef')
       }
     }
   }
@@ -149,8 +222,9 @@ export default function AdminDashboard() {
           <div className="flex space-x-8">
             {[
               { id: 'overview', label: 'Overview' },
-              { id: 'pending', label: `Pending Approvals (${pendingWaiters.length})` },
+              { id: 'pending', label: `Pending Approvals (${pendingWaiters.length + pendingChefs.length})` },
               { id: 'waiters', label: 'All Waiters' },
+              { id: 'chefs', label: 'All Chefs' },
               { id: 'settings', label: 'Settings' }
             ].map((tab) => (
               <button
@@ -181,22 +255,20 @@ export default function AdminDashboard() {
                 <p className="text-3xl font-bold text-blue-600">{allWaiters.length}</p>
               </div>
               
+              <div className="bg-white p-6 rounded-lg shadow border border-orange-200">
+                <h3 className="text-lg font-semibold text-orange-900 mb-2">Total Chefs</h3>
+                <p className="text-3xl font-bold text-orange-600">{allChefs.length}</p>
+              </div>
+              
               <div className="bg-white p-6 rounded-lg shadow border border-yellow-200">
                 <h3 className="text-lg font-semibold text-yellow-900 mb-2">Pending Approvals</h3>
-                <p className="text-3xl font-bold text-yellow-600">{pendingWaiters.length}</p>
+                <p className="text-3xl font-bold text-yellow-600">{pendingWaiters.length + pendingChefs.length}</p>
               </div>
               
               <div className="bg-white p-6 rounded-lg shadow border border-green-200">
-                <h3 className="text-lg font-semibold text-green-900 mb-2">Active Waiters</h3>
+                <h3 className="text-lg font-semibold text-green-900 mb-2">Active Staff</h3>
                 <p className="text-3xl font-bold text-green-600">
-                  {allWaiters.filter(w => w.status === 'active').length}
-                </p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow border border-red-200">
-                <h3 className="text-lg font-semibold text-red-900 mb-2">Rejected</h3>
-                <p className="text-3xl font-bold text-red-600">
-                  {allWaiters.filter(w => w.status === 'rejected').length}
+                  {allWaiters.filter(w => w.status === 'active').length + allChefs.filter(c => c.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -204,89 +276,184 @@ export default function AdminDashboard() {
 
           {/* Pending Approvals Tab */}
           {activeTab === 'pending' && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Pending Waiter Approvals</h2>
-                <p className="text-gray-600">Review and approve waiter applications</p>
-              </div>
-              
-              {pendingWaiters.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  <p>No pending approvals at this time.</p>
+            <div className="space-y-8">
+              {/* Pending Waiters */}
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold text-gray-900">Pending Waiter Approvals</h2>
+                  <p className="text-gray-600">Review and approve waiter applications</p>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Phone
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Experience
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Shift
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Applied
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {pendingWaiters.map((waiter) => (
-                        <tr key={waiter.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {waiter.firstName} {waiter.lastName}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.phone}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.experience}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.preferredShift}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.createdAt ? new Date(waiter.createdAt).toLocaleDateString() : 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => approveWaiter(waiter.id)}
-                                className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => rejectWaiter(waiter.id)}
-                                className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </td>
+                
+                {pendingWaiters.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">
+                    <p>No pending waiter approvals at this time.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Phone
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Experience
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Shift
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Applied
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {pendingWaiters.map((waiter) => (
+                          <tr key={waiter.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {waiter.firstName} {waiter.lastName}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {waiter.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {waiter.phone}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {waiter.experience}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {waiter.preferredShift}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {waiter.createdAt ? new Date(waiter.createdAt).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => approveWaiter(waiter.id)}
+                                  className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => rejectWaiter(waiter.id)}
+                                  className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Pending Chefs */}
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold text-gray-900">Pending Chef Approvals</h2>
+                  <p className="text-gray-600">Review and approve chef applications</p>
                 </div>
-              )}
+                
+                {pendingChefs.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">
+                    <p>No pending chef approvals at this time.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Phone
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Experience
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Specialization
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Shift
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Applied
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {pendingChefs.map((chef) => (
+                          <tr key={chef.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {chef.firstName} {chef.lastName}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {chef.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {chef.phone}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {chef.experience}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {chef.specialization}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {chef.preferredShift}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {chef.createdAt ? new Date(chef.createdAt).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => approveChef(chef.id)}
+                                  className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => rejectChef(chef.id)}
+                                  className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -382,6 +549,104 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* All Chefs Tab */}
+          {activeTab === 'chefs' && (
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">All Chefs</h2>
+                <p className="text-gray-600">Manage all chef accounts</p>
+              </div>
+              
+              {allChefs.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">
+                  <p>No chefs registered yet.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Experience
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Specialization
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Shift
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {allChefs.map((chef) => (
+                        <tr key={chef.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {chef.firstName} {chef.lastName}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {chef.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getStatusBadge(chef.status)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {chef.experience}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {chef.specialization}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {chef.preferredShift}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              {chef.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => approveChef(chef.id)}
+                                    className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => rejectChef(chef.id)}
+                                    className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => deleteChef(chef.id)}
+                                className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div className="bg-white shadow rounded-lg">
@@ -410,7 +675,7 @@ export default function AdminDashboard() {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
                     <div className="flex space-x-4">
                       <button 
-                        onClick={fetchWaiters}
+                        onClick={fetchData}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Refresh Data
