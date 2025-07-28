@@ -1,6 +1,7 @@
 import { signInWithEmailAndPassword } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
 import React, { useState } from 'react'
-import { auth } from './firebase'
+import { auth, db } from './firebase'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -12,9 +13,37 @@ export default function Login() {
         e.preventDefault();
         setIsLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
             console.log("User logged in Successfully!!");
-            window.location.href = "/home";
+            
+            // Get user data from Firestore to check role
+            const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+            
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const userRole = userData.role;
+                
+                // Redirect based on user role
+                switch (userRole) {
+                    case 'admin':
+                        window.location.href = "/dashboard/admin";
+                        break;
+                    case 'waiter':
+                        window.location.href = "/dashboard/waiter";
+                        break;
+                    case 'chef':
+                        window.location.href = "/dashboard/chef";
+                        break;
+                    case 'cashier':
+                        window.location.href = "/dashboard/cashier";
+                        break;
+                    default:
+                        window.location.href = "/home";
+                }
+            } else {
+                // If no user document exists, redirect to home
+                window.location.href = "/home";
+            }
         } catch(error) {
             console.log(error.message);
         } finally {
@@ -129,9 +158,6 @@ export default function Login() {
             </button>
           </form>
 
-
-         
-
           {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
@@ -141,6 +167,47 @@ export default function Login() {
               </a>
             </p>
           </div>
+
+          {/* Waiter */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Want to be a waiter?{' '}
+              <a href="/waiterSignUp" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Sign Up
+              </a>
+            </p>
+          </div>
+
+         {/* Chef */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Want to be a Chef?{' '}
+              <a href="/chefSignUp" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Sign Up
+              </a>
+            </p>
+          </div>
+
+          {/* Cashier */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Want to be a Cashier?{' '}
+              <a href="/cashierSignUp" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Sign Up
+              </a>
+            </p>
+          </div>
+
+          {/* Admin */}
+          {/* <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Want to be an Admin?{' '}
+              <a href="/adminSignUp" className="font-medium text-purple-600 hover:text-purple-500">
+                Sign Up
+              </a>
+            </p>
+          </div> */}
+          
         </div>
       </div>
     </div>
