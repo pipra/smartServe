@@ -5,14 +5,15 @@ import { auth, db } from './firebase'
 
 function CashierSignUp() {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     phone: '',
     experience: '',
     skills: [],
-    shift: 'morning'
+    preferredShift: 'morning'
   })
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -72,8 +73,8 @@ function CashierSignUp() {
       return
     }
 
-    if (!formData.name.trim()) {
-      setError('Please enter your full name')
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      setError('Please enter your first and last name')
       setIsLoading(false)
       return
     }
@@ -89,21 +90,15 @@ function CashierSignUp() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
       const user = userCredential.user
 
-      // Split name into first and last name
-      const nameParts = formData.name.trim().split(' ')
-      const firstName = nameParts[0]
-      const lastName = nameParts.slice(1).join(' ') || ''
-
       // Save cashier data to Firestore
       await setDoc(doc(db, 'Cashiers', user.uid), {
-        firstName,
-        lastName,
-        name: formData.name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         experience: formData.experience,
         skills: formData.skills,
-        preferredShift: formData.shift,
+        preferredShift: formData.preferredShift,
         status: 'pending',
         approval: false,
         createdAt: new Date().toISOString(),
@@ -114,14 +109,15 @@ function CashierSignUp() {
       
       // Reset form
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         password: '',
         confirmPassword: '',
         phone: '',
         experience: '',
         skills: [],
-        shift: 'morning'
+        preferredShift: 'morning'
       })
 
       // Redirect to login
@@ -163,24 +159,42 @@ function CashierSignUp() {
           )}
           
           <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-                placeholder="Enter your full name"
-              />
+            {/* Name Fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 text-left">
+                  First Name
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  required
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  placeholder="First name"
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 text-left">
+                  Last Name
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  required
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  placeholder="Last name"
+                />
+              </div>
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 text-left">
                 Email Address
               </label>
               <input
@@ -196,7 +210,7 @@ function CashierSignUp() {
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 text-left">
                 Phone Number
               </label>
               <input
@@ -212,7 +226,7 @@ function CashierSignUp() {
             </div>
 
             <div>
-              <label htmlFor="experience" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="experience" className="block text-sm font-medium text-gray-700 text-left">
                 Experience Level
               </label>
               <select
@@ -234,7 +248,7 @@ function CashierSignUp() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
                 Skills (Select all that apply)
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -253,13 +267,13 @@ function CashierSignUp() {
             </div>
 
             <div>
-              <label htmlFor="shift" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="preferredShift" className="block text-sm font-medium text-gray-700 text-left">
                 Preferred Shift
               </label>
               <select
-                id="shift"
-                name="shift"
-                value={formData.shift}
+                id="preferredShift"
+                name="preferredShift"
+                value={formData.preferredShift}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               >
@@ -271,7 +285,7 @@ function CashierSignUp() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 text-left">
                 Password
               </label>
               <div className="mt-1 relative">
@@ -298,7 +312,7 @@ function CashierSignUp() {
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 text-left">
                 Confirm Password
               </label>
               <div className="mt-1 relative">
@@ -331,7 +345,7 @@ function CashierSignUp() {
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Registering...' : 'Register as Cashier'}
+              {isLoading ? 'Creating Account...' : 'Create Cashier Account'}
             </button>
           </div>
 
@@ -339,7 +353,7 @@ function CashierSignUp() {
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
               <a href="/login" className="font-medium text-teal-600 hover:text-teal-500">
-                Sign in here
+                Sign In
               </a>
             </p>
           </div>

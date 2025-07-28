@@ -267,14 +267,14 @@ export default function Login() {
           </div>
 
           {/* Admin */}
-          <div className="mt-6 text-center">
+          {/* <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Want to be an Admin?{' '}
               <a href="/adminSignUp" className="font-medium text-purple-600 hover:text-purple-500">
                 Sign Up
               </a>
             </p>
-          </div>
+          </div> */}
           
         </div>
       </div>
