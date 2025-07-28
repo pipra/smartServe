@@ -39,11 +39,18 @@ export default function Login() {
                         userData = chefDoc.data();
                         userRole = 'chef';
                     } else {
-                        // Finally try users collection (for other roles)
-                        const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-                        if (userDoc.exists()) {
-                            userData = userDoc.data();
-                            userRole = userData.role;
+                        // Then try Cashiers collection
+                        const cashierDoc = await getDoc(doc(db, 'Cashiers', userCredential.user.uid));
+                        if (cashierDoc.exists()) {
+                            userData = cashierDoc.data();
+                            userRole = 'cashier';
+                        } else {
+                            // Finally try users collection (for other roles)
+                            const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+                            if (userDoc.exists()) {
+                                userData = userDoc.data();
+                                userRole = userData.role;
+                            }
                         }
                     }
                 }
@@ -60,6 +67,13 @@ export default function Login() {
                 // Check if chef account is approved
                 if (userRole === 'chef' && (!userData.approval || userData.status === 'pending')) {
                     setError('Your chef account is pending admin approval. Please wait for approval before logging in.');
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // Check if cashier account is approved
+                if (userRole === 'cashier' && (!userData.approval || userData.status === 'pending')) {
+                    setError('Your cashier account is pending admin approval. Please wait for approval before logging in.');
                     setIsLoading(false);
                     return;
                 }

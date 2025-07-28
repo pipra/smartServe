@@ -8,6 +8,8 @@ export default function AdminDashboard() {
   const [allWaiters, setAllWaiters] = useState([])
   const [pendingChefs, setPendingChefs] = useState([])
   const [allChefs, setAllChefs] = useState([])
+  const [pendingCashiers, setPendingCashiers] = useState([])
+  const [allCashiers, setAllCashiers] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -63,6 +65,29 @@ export default function AdminDashboard() {
         ...doc.data()
       }))
       setAllChefs(chefsData)
+
+      // Fetch pending cashiers
+      const pendingCashiersQuery = query(
+        collection(db, 'Cashiers'),
+        where('status', '==', 'pending')
+      )
+      const pendingCashiersSnapshot = await getDocs(pendingCashiersQuery)
+      const pendingCashiersData = pendingCashiersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setPendingCashiers(pendingCashiersData)
+
+      // Fetch all cashiers for management
+      const cashiersQuery = query(
+        collection(db, 'Cashiers')
+      )
+      const cashiersSnapshot = await getDocs(cashiersQuery)
+      const cashiersData = cashiersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setAllCashiers(cashiersData)
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -165,6 +190,54 @@ export default function AdminDashboard() {
     }
   }
 
+  // Cashier management functions
+  const approveCashier = async (cashierId) => {
+    try {
+      await updateDoc(doc(db, 'Cashiers', cashierId), {
+        status: 'active',
+        approval: true,
+        approvedAt: new Date().toISOString()
+      })
+      
+      // Refresh the data
+      fetchData()
+      alert('Cashier approved successfully!')
+    } catch (error) {
+      console.error('Error approving cashier:', error)
+      alert('Failed to approve cashier')
+    }
+  }
+
+  const rejectCashier = async (cashierId) => {
+    try {
+      await updateDoc(doc(db, 'Cashiers', cashierId), {
+        status: 'rejected',
+        approval: false,
+        rejectedAt: new Date().toISOString()
+      })
+      
+      // Refresh the data
+      fetchData()
+      alert('Cashier rejected successfully!')
+    } catch (error) {
+      console.error('Error rejecting cashier:', error)
+      alert('Failed to reject cashier')
+    }
+  }
+
+  const deleteCashier = async (cashierId) => {
+    if (window.confirm('Are you sure you want to permanently delete this cashier?')) {
+      try {
+        await deleteDoc(doc(db, 'Cashiers', cashierId))
+        fetchData()
+        alert('Cashier deleted successfully!')
+      } catch (error) {
+        console.error('Error deleting cashier:', error)
+        alert('Failed to delete cashier')
+      }
+    }
+  }
+
   const getStatusBadge = (status) => {
     const styles = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -222,9 +295,10 @@ export default function AdminDashboard() {
           <div className="flex space-x-8">
             {[
               { id: 'overview', label: 'Overview' },
-              { id: 'pending', label: `Pending Approvals (${pendingWaiters.length + pendingChefs.length})` },
+              { id: 'pending', label: `Pending Approvals (${pendingWaiters.length + pendingChefs.length + pendingCashiers.length})` },
               { id: 'waiters', label: 'All Waiters' },
               { id: 'chefs', label: 'All Chefs' },
+              { id: 'cashiers', label: 'All Cashiers' },
               { id: 'settings', label: 'Settings' }
             ].map((tab) => (
               <button
@@ -249,7 +323,7 @@ export default function AdminDashboard() {
           
           {/* Overview Tab */}
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
               <div className="bg-white p-6 rounded-lg shadow border border-blue-200">
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">Total Waiters</h3>
                 <p className="text-3xl font-bold text-blue-600">{allWaiters.length}</p>
@@ -260,15 +334,20 @@ export default function AdminDashboard() {
                 <p className="text-3xl font-bold text-orange-600">{allChefs.length}</p>
               </div>
               
+              <div className="bg-white p-6 rounded-lg shadow border border-teal-200">
+                <h3 className="text-lg font-semibold text-teal-900 mb-2">Total Cashiers</h3>
+                <p className="text-3xl font-bold text-teal-600">{allCashiers.length}</p>
+              </div>
+              
               <div className="bg-white p-6 rounded-lg shadow border border-yellow-200">
                 <h3 className="text-lg font-semibold text-yellow-900 mb-2">Pending Approvals</h3>
-                <p className="text-3xl font-bold text-yellow-600">{pendingWaiters.length + pendingChefs.length}</p>
+                <p className="text-3xl font-bold text-yellow-600">{pendingWaiters.length + pendingChefs.length + pendingCashiers.length}</p>
               </div>
               
               <div className="bg-white p-6 rounded-lg shadow border border-green-200">
                 <h3 className="text-lg font-semibold text-green-900 mb-2">Active Staff</h3>
                 <p className="text-3xl font-bold text-green-600">
-                  {allWaiters.filter(w => w.status === 'active').length + allChefs.filter(c => c.status === 'active').length}
+                  {allWaiters.filter(w => w.status === 'active').length + allChefs.filter(c => c.status === 'active').length + allCashiers.filter(c => c.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -441,6 +520,98 @@ export default function AdminDashboard() {
                                 </button>
                                 <button
                                   onClick={() => rejectChef(chef.id)}
+                                  className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Pending Cashiers */}
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold text-gray-900">Pending Cashier Approvals</h2>
+                  <p className="text-gray-600">Review and approve cashier applications</p>
+                </div>
+                
+                {pendingCashiers.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">
+                    <p>No pending cashier approvals at this time.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Phone
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Experience
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Skills
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Shift
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Applied
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {pendingCashiers.map((cashier) => (
+                          <tr key={cashier.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {cashier.name}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {cashier.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {cashier.phone}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {cashier.experience} years
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {cashier.skills?.join(', ') || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {cashier.preferredShift}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {cashier.createdAt ? new Date(cashier.createdAt).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => approveCashier(cashier.id)}
+                                  className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => rejectCashier(cashier.id)}
                                   className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
                                 >
                                   Reject
@@ -632,6 +803,98 @@ export default function AdminDashboard() {
                               )}
                               <button
                                 onClick={() => deleteChef(chef.id)}
+                                className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* All Cashiers Tab */}
+          {activeTab === 'cashiers' && (
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">All Cashiers</h2>
+                <p className="text-gray-600">Manage all cashier accounts</p>
+              </div>
+              
+              {allCashiers.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">
+                  <p>No cashiers registered yet.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Experience
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Shift
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {allCashiers.map((cashier) => (
+                        <tr key={cashier.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {cashier.firstName} {cashier.lastName}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {cashier.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getStatusBadge(cashier.status)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {cashier.experience}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {cashier.preferredShift}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              {cashier.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => approveCashier(cashier.id)}
+                                    className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => rejectCashier(cashier.id)}
+                                    className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => deleteCashier(cashier.id)}
                                 className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
                               >
                                 Delete

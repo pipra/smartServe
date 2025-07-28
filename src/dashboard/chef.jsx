@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 
 export default function ChefDashboard() {
   const [activeSection, setActiveSection] = useState('orders')
@@ -9,12 +9,12 @@ export default function ChefDashboard() {
     { id: 4, table: 'Table 1', items: ['Beef Steak', 'Mashed Potatoes'], status: 'preparing', time: '12 mins', priority: 'urgent' }
   ])
 
-  const [stats, setStats] = useState({
+  const stats = {
     totalOrders: 12,
     completedToday: 8,
     inProgress: 4,
     averageTime: '18 mins'
-  })
+  }
 
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders(orders.map(order => 
