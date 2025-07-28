@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { setDoc, doc } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
 
 export default function SignUp() {
   const [firstName, setFirstName] = useState('');
@@ -10,7 +9,6 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -39,7 +37,7 @@ export default function SignUp() {
       }
 
       alert('User Registered Successfully!');
-      navigate('/');
+      window.location.href = '/';
     } catch (error) {
       alert(error.message);
     }
@@ -188,7 +186,7 @@ export default function SignUp() {
               <span
                 className="font-medium text-indigo-600 hover:text-indigo-500 cursor-pointer"
                 onClick={() => {
-                  navigate('/login');
+                  window.location.href = '/';
                 }}
               >
                 Sign In
