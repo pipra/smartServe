@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { db } from '../authentication/firebase'
-import { collection, getDocs, updateDoc, doc, deleteDoc, query, where } from 'firebase/firestore'
+import { db, auth } from '../authentication/firebase'
+import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc } from 'firebase/firestore'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -11,10 +12,46 @@ export default function AdminDashboard() {
   const [pendingCashiers, setPendingCashiers] = useState([])
   const [allCashiers, setAllCashiers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [userFullName, setUserFullName] = useState('Admin')
 
   useEffect(() => {
     fetchData()
+    fetchUserData()
   }, [])
+
+  const fetchUserData = async () => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // User not authenticated, redirect to login
+        console.log('User not authenticated, redirecting to login')
+        window.location.replace('/login')
+        return
+      }
+
+      try {
+        // Check Admin collection
+        const adminDoc = await getDoc(doc(db, 'Admin', user.uid))
+        if (adminDoc.exists()) {
+          const userData = adminDoc.data()
+          const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
+          setUserFullName(fullName || 'Admin')
+        } else {
+          // User doesn't exist in Admin collection
+          console.log('User not found in Admin collection, redirecting to login')
+          sessionStorage.setItem('justLoggedOut', 'true')
+          await signOut(auth)
+          window.location.href = '/login'
+          return
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        window.location.href = '/login'
+        return
+      }
+    })
+
+    return () => unsubscribe()
+  }
 
   const fetchData = async () => {
     try {
@@ -274,11 +311,17 @@ export default function AdminDashboard() {
               <p className="text-blue-600">SmartServe Restaurant Management</p>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-blue-600">Welcome, Admin</span>
+              <span className="text-sm text-blue-600">Welcome, {userFullName}</span>
               <button 
-                onClick={() => {
-                  localStorage.removeItem('user')
-                  window.location.href = '/login'
+                onClick={async () => {
+                  try {
+                    // Set logout flag to prevent auto-redirect
+                    sessionStorage.setItem('justLoggedOut', 'true')
+                    await signOut(auth)
+                    window.location.href = '/login'
+                  } catch (error) {
+                    console.error('Error signing out:', error)
+                  }
                 }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >

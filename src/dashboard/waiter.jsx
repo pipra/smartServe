@@ -4,8 +4,8 @@ import { signOut } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 
 function Waiter() {
-  const [user, setUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
+  const [userFullName, setUserFullName] = useState('Waiter')
   const [activeSection, setActiveSection] = useState('dashboard')
   const [tables, setTables] = useState([])
   const [orders, setOrders] = useState([])
@@ -13,15 +13,46 @@ function Waiter() {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser)
-        // Fetch user profile
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data())
-        }
-        loadDashboardData()
+      if (!currentUser) {
+        // User not authenticated, redirect to login
+        console.log('User not authenticated, redirecting to login')
+        window.location.replace('/login')
+        return
       }
+
+      try {
+        // Fetch user profile from Waiters collection
+        const waiterDoc = await getDoc(doc(db, 'Waiters', currentUser.uid))
+        if (waiterDoc.exists()) {
+          const userData = waiterDoc.data()
+          
+          // Check if waiter is approved
+          if (!userData.approval || userData.status === 'pending') {
+            console.log('Waiter account not approved, redirecting to login')
+            sessionStorage.setItem('justLoggedOut', 'true')
+            await signOut(auth)
+            window.location.href = '/login'
+            return
+          }
+          
+          setUserProfile(userData)
+          const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
+          setUserFullName(fullName || 'Waiter')
+          loadDashboardData()
+        } else {
+          // User doesn't exist in Waiters collection
+          console.log('User not found in Waiters collection, redirecting to login')
+          sessionStorage.setItem('justLoggedOut', 'true')
+          await signOut(auth)
+          window.location.href = '/login'
+          return
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        window.location.href = '/login'
+        return
+      }
+      
       setIsLoading(false)
     })
 
@@ -48,6 +79,8 @@ function Waiter() {
 
   const handleLogout = async () => {
     try {
+      // Set logout flag to prevent auto-redirect
+      sessionStorage.setItem('justLoggedOut', 'true')
       await signOut(auth)
       window.location.href = '/login'
     } catch (error) {
@@ -107,7 +140,7 @@ function Waiter() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Welcome, {userProfile?.name || user?.email}
+                Welcome, {userFullName}
               </span>
               <button
                 onClick={handleLogout}

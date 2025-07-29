@@ -1,7 +1,8 @@
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { auth, db } from './firebase'
+import { onAuthStateChanged } from 'firebase/auth'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -9,6 +10,144 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+
+  // Check if user is already logged in on component mount
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      try {
+        // Check for logout flag first
+        const loggedOut = sessionStorage.getItem('justLoggedOut')
+        if (loggedOut) {
+          sessionStorage.removeItem('justLoggedOut') // Clean up
+          setIsCheckingAuth(false)
+          return
+        }
+
+        if (user) {
+          console.log('User already logged in, checking role...')
+          
+          // Verify user has valid token
+          try {
+            const token = await user.getIdToken(false)
+            if (!token) {
+              setIsCheckingAuth(false)
+              return
+            }
+          } catch (tokenError) {
+            console.log('Token verification failed:', tokenError)
+            setIsCheckingAuth(false)
+            return
+          }
+
+          // Check user role and redirect accordingly
+          let userData = null
+          let userRole = null
+
+          // Check Admin collection
+          const adminDoc = await getDoc(doc(db, 'Admin', user.uid))
+          if (adminDoc.exists()) {
+            userData = adminDoc.data()
+            userRole = 'admin'
+          } else {
+            // Check Waiters collection
+            const waiterDoc = await getDoc(doc(db, 'Waiters', user.uid))
+            if (waiterDoc.exists()) {
+              userData = waiterDoc.data()
+              userRole = 'waiter'
+            } else {
+              // Check Chefs collection
+              const chefDoc = await getDoc(doc(db, 'Chefs', user.uid))
+              if (chefDoc.exists()) {
+                userData = chefDoc.data()
+                userRole = 'chef'
+              } else {
+                // Check Cashiers collection
+                const cashierDoc = await getDoc(doc(db, 'Cashiers', user.uid))
+                if (cashierDoc.exists()) {
+                  userData = cashierDoc.data()
+                  userRole = 'cashier'
+                } else {
+                  // Check users collection
+                  const userDoc = await getDoc(doc(db, 'users', user.uid))
+                  if (userDoc.exists()) {
+                    userData = userDoc.data()
+                    userRole = userData.role
+                  }
+                }
+              }
+            }
+          }
+
+          if (userData && userRole) {
+            // Check approval status for staff roles
+            if (userRole === 'waiter' && (!userData.approval || userData.status === 'pending')) {
+              console.log('Waiter account pending approval, staying on login page')
+              setIsCheckingAuth(false)
+              return
+            }
+            
+            if (userRole === 'chef' && (!userData.approval || userData.status === 'pending')) {
+              console.log('Chef account pending approval, staying on login page')
+              setIsCheckingAuth(false)
+              return
+            }
+            
+            if (userRole === 'cashier' && (!userData.approval || userData.status === 'pending')) {
+              console.log('Cashier account pending approval, staying on login page')
+              setIsCheckingAuth(false)
+              return
+            }
+
+            // Redirect based on user role
+            console.log('User already authenticated, redirecting to dashboard for role:', userRole)
+            switch (userRole) {
+              case 'admin':
+                window.location.replace('/dashboard/admin')
+                break
+              case 'waiter':
+                window.location.replace('/dashboard/waiter')
+                break
+              case 'chef':
+                window.location.replace('/dashboard/chef')
+                break
+              case 'cashier':
+                window.location.replace('/dashboard/cashier')
+                break
+              default:
+                window.location.replace('/home')
+            }
+            return // Don't set isCheckingAuth to false since we're redirecting
+          }
+        }
+        
+        setIsCheckingAuth(false)
+      } catch (error) {
+        console.error('Error checking auth state:', error)
+        setIsCheckingAuth(false)
+      }
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  // Show loading while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="animate-spin h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Checking authentication...</h2>
+          <p className="text-gray-600">Please wait while we verify your login status</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e) => {
         e.preventDefault();
@@ -84,25 +223,25 @@ export default function Login() {
                 // Redirect based on user role
                 switch (userRole) {
                     case 'admin':
-                        window.location.href = "/dashboard/admin";
+                        window.location.replace('/dashboard/admin');
                         break;
                     case 'waiter':
-                        window.location.href = "/dashboard/waiter";
+                        window.location.replace('/dashboard/waiter');
                         break;
                     case 'chef':
-                        window.location.href = "/dashboard/chef";
+                        window.location.replace('/dashboard/chef');
                         break;
                     case 'cashier':
-                        window.location.href = "/dashboard/cashier";
+                        window.location.replace('/dashboard/cashier');
                         break;
                     default:
-                        window.location.href = "/home";
-                        console.log("Unknown user role, redirecting to home.");
+                        window.location.replace('/home');
                 }
+                console.log("User role identified:", userRole);
             } else {
                 // If no user document exists, redirect to home
                 console.log("No user document found, redirecting to home.");
-                window.location.href = "/home";
+                // window.location.replace('/home');
             }
         } catch(error) {
             console.log(error.message);
@@ -226,55 +365,82 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Sign Up Link */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <a href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Sign Up
-              </a>
-            </p>
+          {/* Divider */}
+          <div className="mt-8 mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">New to SmartServe?</span>
+              </div>
+            </div>
           </div>
 
-          {/* Waiter */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Want to be a waiter?{' '}
-              <a href="/waiterSignUp" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Sign Up
+          {/* Sign Up Options */}
+          <div className="space-y-4">
+            <h3 className="text-center text-sm font-medium text-gray-900 mb-4">Join as:</h3>
+            
+            {/* Role-based signup buttons grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* General User */}
+              <a
+                href="/signup"
+                className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 group"
+              >
+                <svg className="w-4 h-4 mr-2 text-gray-500 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                User
               </a>
-            </p>
-          </div>
 
-         {/* Chef */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Want to be a Chef?{' '}
-              <a href="/chefSignUp" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Sign Up
+              {/* Waiter */}
+              <a
+                href="/waiterSignUp"
+                className="flex items-center justify-center px-4 py-3 border border-green-300 rounded-lg text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-all duration-200 group"
+              >
+                <svg className="w-4 h-4 mr-2 text-green-500 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Waiter
               </a>
-            </p>
-          </div>
 
-          {/* Cashier */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Want to be a Cashier?{' '}
-              <a href="/cashierSignUp" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Sign Up
+              {/* Chef */}
+              <a
+                href="/chefSignUp"
+                className="flex items-center justify-center px-4 py-3 border border-orange-300 rounded-lg text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 hover:border-orange-400 transition-all duration-200 group"
+              >
+                <svg className="w-4 h-4 mr-2 text-orange-500 group-hover:text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                Chef
               </a>
-            </p>
-          </div>
 
-          {/* Admin */}
-          {/* <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Want to be an Admin?{' '}
-              <a href="/adminSignUp" className="font-medium text-purple-600 hover:text-purple-500">
-                Sign Up
+              {/* Cashier */}
+              <a
+                href="/cashierSignUp"
+                className="flex items-center justify-center px-4 py-3 border border-teal-300 rounded-lg text-sm font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 hover:border-teal-400 transition-all duration-200 group"
+              >
+                <svg className="w-4 h-4 mr-2 text-teal-500 group-hover:text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Cashier
               </a>
-            </p>
-          </div> */}
+            </div>
+
+            {/* Admin - Special placement */}
+            <div className="pt-2">
+              <a
+                href="/adminSignUp"
+                className="flex items-center justify-center w-full px-4 py-3 border border-purple-300 rounded-lg text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 hover:border-purple-400 transition-all duration-200 group"
+              >
+                <svg className="w-4 h-4 mr-2 text-purple-500 group-hover:text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Administrator
+              </a>
+            </div>
+          </div>
           
         </div>
       </div>

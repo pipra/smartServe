@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { db } from '../authentication/firebase'
-import { collection, getDocs, addDoc } from 'firebase/firestore'
+import { db, auth } from '../authentication/firebase'
+import { collection, getDocs, addDoc, doc, getDoc } from 'firebase/firestore'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
 
 function Cashier() {
   const [activeTab, setActiveTab] = useState('pos')
   const [orders, setOrders] = useState([])
   const [currentOrder, setCurrentOrder] = useState([])
+  const [userFullName, setUserFullName] = useState('')
   const [menuItems] = useState([
     { id: 1, name: 'Burger', price: 12.99, category: 'Main' },
     { id: 2, name: 'Pizza', price: 15.99, category: 'Main' },
@@ -24,7 +26,52 @@ function Cashier() {
 
   useEffect(() => {
     fetchOrders()
+    fetchUserData()
   }, [])
+
+  const fetchUserData = async () => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // User not authenticated, redirect to login
+        console.log('User not authenticated, redirecting to login')
+        window.location.replace('/login')
+        return
+      }
+
+      try {
+        // Check Cashiers collection
+        const cashierDoc = await getDoc(doc(db, 'Cashiers', user.uid))
+        if (cashierDoc.exists()) {
+          const userData = cashierDoc.data()
+          
+          // Check if cashier is approved
+          if (!userData.approval || userData.status === 'pending') {
+            console.log('Cashier account not approved, redirecting to login')
+            sessionStorage.setItem('justLoggedOut', 'true')
+            await signOut(auth)
+            window.location.href = '/login'
+            return
+          }
+          
+          const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
+          setUserFullName(fullName || 'Cashier')
+        } else {
+          // User doesn't exist in Cashiers collection
+          console.log('User not found in Cashiers collection, redirecting to login')
+          sessionStorage.setItem('justLoggedOut', 'true')
+          await signOut(auth)
+          window.location.href = '/login'
+          return
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        window.location.href = '/login'
+        return
+      }
+    })
+
+    return () => unsubscribe()
+  }
 
   const fetchOrders = async () => {
     try {
@@ -122,11 +169,17 @@ function Cashier() {
               <p className="text-teal-600">SmartServe Point of Sale</p>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-teal-600">Welcome, Cashier</span>
+              <span className="text-sm text-teal-600">Welcome, {userFullName}</span>
               <button 
-                onClick={() => {
-                  localStorage.removeItem('user')
-                  window.location.href = '/login'
+                onClick={async () => {
+                  try {
+                    // Set logout flag to prevent auto-redirect
+                    sessionStorage.setItem('justLoggedOut', 'true')
+                    await signOut(auth)
+                    window.location.href = '/login'
+                  } catch (error) {
+                    console.error('Error signing out:', error)
+                  }
                 }}
                 className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-colors"
               >

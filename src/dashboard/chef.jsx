@@ -1,7 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { auth, db } from '../authentication/firebase'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
 
 export default function ChefDashboard() {
   const [activeSection, setActiveSection] = useState('orders')
+  const [userFullName, setUserFullName] = useState('Chef')
   const [orders, setOrders] = useState([
     { id: 1, table: 'Table 5', items: ['Pasta Carbonara', 'Caesar Salad'], status: 'preparing', time: '15 mins', priority: 'normal' },
     { id: 2, table: 'Table 2', items: ['Grilled Salmon', 'Steamed Vegetables'], status: 'ready', time: '5 mins', priority: 'high' },
@@ -15,6 +19,50 @@ export default function ChefDashboard() {
     inProgress: 4,
     averageTime: '18 mins'
   }
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // User not authenticated, redirect to login
+        console.log('User not authenticated, redirecting to login')
+        window.location.replace('/login')
+        return
+      }
+
+      try {
+        // Check Chefs collection
+        const chefDoc = await getDoc(doc(db, 'Chefs', user.uid))
+        if (chefDoc.exists()) {
+          const userData = chefDoc.data()
+          
+          // Check if chef is approved
+          if (!userData.approval || userData.status === 'pending') {
+            console.log('Chef account not approved, redirecting to login')
+            sessionStorage.setItem('justLoggedOut', 'true')
+            await signOut(auth)
+            window.location.href = '/login'
+            return
+          }
+          
+          const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
+          setUserFullName(fullName || 'Chef')
+        } else {
+          // User doesn't exist in Chefs collection
+          console.log('User not found in Chefs collection, redirecting to login')
+          sessionStorage.setItem('justLoggedOut', 'true')
+          await signOut(auth)
+          window.location.href = '/login'
+          return
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        window.location.href = '/login'
+        return
+      }
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders(orders.map(order => 
@@ -52,11 +100,17 @@ export default function ChefDashboard() {
               <p className="text-orange-600">Kitchen Management System</p>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-orange-600">Welcome, Chef</span>
+              <span className="text-sm text-orange-600">Welcome, {userFullName}</span>
               <button 
-                onClick={() => {
-                  localStorage.removeItem('user')
-                  window.location.href = '/login'
+                onClick={async () => {
+                  try {
+                    // Set logout flag to prevent auto-redirect
+                    sessionStorage.setItem('justLoggedOut', 'true')
+                    await signOut(auth)
+                    window.location.href = '/login'
+                  } catch (error) {
+                    console.error('Error signing out:', error)
+                  }
                 }}
                 className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
               >
