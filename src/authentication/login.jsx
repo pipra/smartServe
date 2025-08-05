@@ -69,10 +69,10 @@ export default function Login() {
                   userRole = 'cashier'
                 } else {
                   // Check users collection
-                  const userDoc = await getDoc(doc(db, 'users', user.uid))
+                  const userDoc = await getDoc(doc(db, 'Users', user.uid))
                   if (userDoc.exists()) {
                     userData = userDoc.data()
-                    userRole = userData.role
+                    userRole = userData.role || userData.userType || 'user' // Check both role and userType fields
                   }
                 }
               }
@@ -184,11 +184,11 @@ export default function Login() {
                             userData = cashierDoc.data();
                             userRole = 'cashier';
                         } else {
-                            // Finally try users collection (for other roles)
-                            const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+                            // Finally try Users collection (for other roles)
+                            const userDoc = await getDoc(doc(db, 'Users', userCredential.user.uid));
                             if (userDoc.exists()) {
                                 userData = userDoc.data();
-                                userRole = userData.role;
+                                userRole = userData.role || userData.userType || 'user'; // Check both role and userType fields
                             }
                         }
                     }
@@ -196,7 +196,7 @@ export default function Login() {
             }
             
             if (userData) {
-                // Check if waiter account is approved
+                // Check approval status for staff roles
                 if (userRole === 'waiter' && (!userData.approval || userData.status === 'pending')) {
                     setError('Your waiter account is pending admin approval. Please wait for approval before logging in.');
                     setIsLoading(false);
@@ -218,7 +218,8 @@ export default function Login() {
                 }
                 
 
-                console.log(userData);
+                console.log('User data found:', userData);
+                console.log('User role identified:', userRole);
 
                 // Redirect based on user role
                 switch (userRole) {
@@ -234,14 +235,14 @@ export default function Login() {
                     case 'cashier':
                         window.location.replace('/dashboard/cashier');
                         break;
+                    case 'user':
                     default:
                         window.location.replace('/home');
                 }
-                console.log("User role identified:", userRole);
             } else {
-                // If no user document exists, redirect to home
-                console.log("No user document found, redirecting to home.");
-                // window.location.replace('/home');
+                // If no user document exists, show error
+                console.log("No user document found in any collection.");
+                setError('User account not found. Please contact support or try signing up again.');
             }
         } catch(error) {
             console.log(error.message);

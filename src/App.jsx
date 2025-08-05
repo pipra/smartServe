@@ -11,6 +11,7 @@ import Admin from './dashboard/admin'
 import Waiter from './dashboard/waiter'
 import Chef from './dashboard/chef'
 import Cashier from './dashboard/cashier'
+import CustomerMenu from './components/CustomerMenu'
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path='/dashboard/waiter' element={<Waiter />} />
         <Route path='/dashboard/chef' element={<Chef />} />
         <Route path='/dashboard/cashier' element={<Cashier />} />
+        <Route path='/menu' element={<CustomerMenu />} />
       </Routes>
     </Router>
   )
