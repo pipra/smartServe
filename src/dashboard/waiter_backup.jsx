@@ -158,7 +158,9 @@ function Waiter() {
         ...doc.data()
       }))
       console.log('Menu items fetched from Firestore:', menuData)
-      const availableItems = menuData.filter(item => item.isAvailable)
+      const availableItems = menuData.filter(item => 
+        item.isVisible !== false && item.available !== false
+      )
       console.log('Available menu items:', availableItems)
       setMenuItems(availableItems)
     })
@@ -308,7 +310,7 @@ function Waiter() {
     const matchesSearch = item.name?.toLowerCase().includes(menuSearchTerm.toLowerCase()) ||
                          item.description?.toLowerCase().includes(menuSearchTerm.toLowerCase())
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory
-    return matchesSearch && matchesCategory && item.isAvailable
+    return matchesSearch && matchesCategory && item.isVisible !== false
   })
 
   // Get pending orders count for navigation badge
@@ -726,14 +728,26 @@ function Waiter() {
                             </div>
                             <p className="text-gray-600 text-sm mb-3">{item.description}</p>
                             <div className="flex justify-between items-center">
-                              <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
-                                {item.category}
-                              </span>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                                  {item.category}
+                                </span>
+                                {item.available === false && (
+                                  <span className="text-xs text-red-600 px-2 py-1 bg-red-100 rounded">
+                                    Unavailable
+                                  </span>
+                                )}
+                              </div>
                               <button
                                 onClick={() => addToCart(item)}
-                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+                                disabled={item.available === false}
+                                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                                  item.available === false
+                                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                    : 'bg-green-600 hover:bg-green-700 text-white'
+                                }`}
                               >
-                                Add to Cart
+                                {item.available === false ? 'Not Available' : 'Add to Cart'}
                               </button>
                             </div>
                           </div>

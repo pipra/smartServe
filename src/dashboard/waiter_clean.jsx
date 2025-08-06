@@ -158,7 +158,9 @@ function Waiter() {
         ...doc.data()
       }))
       console.log('Menu items fetched from Firestore:', menuData)
-      const availableItems = menuData.filter(item => item.isAvailable)
+      const availableItems = menuData.filter(item => 
+        item.isVisible !== false
+      )
       console.log('Available menu items:', availableItems)
       setMenuItems(availableItems)
     })

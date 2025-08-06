@@ -195,7 +195,7 @@ export default function Home() {
                 id: doc.id,
                 ...doc.data()
             }))
-            // Only show visible items
+            // Only show visible items (keep unavailable items visible but disable cart actions)
             const visibleItems = items.filter(item => item.isVisible !== false)
             // Enhance items with ratings
             const enhancedItems = enhanceMenuItemsWithRatings(visibleItems)
@@ -882,6 +882,16 @@ export default function Home() {
 
                     {/* Category Filter */}
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {/* Availability Notice */}
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                            <div className="flex items-center space-x-2">
+                                <span className="text-green-600">✅</span>
+                                <p className="text-green-800 text-sm font-medium">
+                                    Menu items shown are currently available. Availability is updated in real-time by our kitchen staff.
+                                </p>
+                            </div>
+                        </div>
+                        
                         <div className="flex flex-wrap justify-center gap-3 mb-8">
                             {categories.map((category) => (
                                 <button
@@ -968,6 +978,11 @@ export default function Home() {
                                             
                                             <div className="flex items-center justify-between mb-3">
                                                 <div className="flex items-center space-x-2">
+                                                    {item.available === false && (
+                                                        <span className="bg-red-500/90 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs font-medium">
+                                                            ❌ Unavailable
+                                                        </span>
+                                                    )}
                                                     {item.isVegetarian && (
                                                         <span className="bg-green-500/80 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs font-medium">
                                                             🌱 Veg
@@ -983,17 +998,26 @@ export default function Home() {
                                             
                                             {/* Action button - Single Add to Cart button */}
                                             <div className="flex justify-center">
-                                                <button 
-                                                    onClick={(e) => {
-                                                        console.log('🔍 Button clicked for item:', item.name)
-                                                        e.stopPropagation()
-                                                        console.log('🔍 About to call addToCart')
-                                                        addToCart(item)
-                                                    }}
-                                                    className="bg-white text-gray-900 px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm shadow-lg min-w-[120px]"
-                                                >
-                                                    🛒 Add to Cart
-                                                </button>
+                                                {item.available === false ? (
+                                                    <button 
+                                                        disabled
+                                                        className="bg-gray-400 text-gray-600 px-6 py-3 rounded-lg cursor-not-allowed font-medium text-sm shadow-lg min-w-[120px]"
+                                                    >
+                                                        ❌ Unavailable
+                                                    </button>
+                                                ) : (
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            console.log('🔍 Button clicked for item:', item.name)
+                                                            e.stopPropagation()
+                                                            console.log('🔍 About to call addToCart')
+                                                            addToCart(item)
+                                                        }}
+                                                        className="bg-white text-gray-900 px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm shadow-lg min-w-[120px]"
+                                                    >
+                                                        🛒 Add to Cart
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                         

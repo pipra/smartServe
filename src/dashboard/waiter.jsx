@@ -394,16 +394,16 @@ function Waiter() {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0)
   }
 
-  // Get unique menu categories from available items only
+  // Get unique menu categories from visible items
   const getMenuCategories = () => {
-    const availableItems = menuItems.filter(item => item.isVisible !== false)
-    const categories = [...new Set(availableItems.map(item => item.category || 'Other'))]
+    const visibleItems = menuItems.filter(item => item.isVisible !== false)
+    const categories = [...new Set(visibleItems.map(item => item.category || 'Other'))]
     return ['all', ...categories.sort()]
   }
 
   // Filter menu items based on category and search term
   const getFilteredMenuItems = () => {
-    // First filter to show only available/visible items
+    // First filter to show only visible items (keep unavailable items visible but disable cart actions)
     let filtered = menuItems.filter(item => item.isVisible !== false)
 
     // Filter by category
@@ -1858,13 +1858,25 @@ function Waiter() {
                                   </span>
                                 )}
                                 {/* Availability indicator */}
-                                <span className="inline-block bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">
-                                  ✅ Available
+                                <span className={`inline-block text-xs px-2 py-1 rounded-full ${
+                                  item.available === false 
+                                    ? 'bg-red-100 text-red-700' 
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {item.available === false ? '❌ Unavailable' : '✅ Available'}
                                 </span>
                               </div>
 
                               {/* Add to Cart / Quantity Controls */}
-                              {!inCart ? (
+                              {item.available === false ? (
+                                <button
+                                  disabled
+                                  className="w-full bg-gray-400 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed flex items-center justify-center space-x-2"
+                                >
+                                  <span>❌</span>
+                                  <span>Unavailable</span>
+                                </button>
+                              ) : !inCart ? (
                                 <button
                                   onClick={() => addToCart(item)}
                                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"

@@ -244,7 +244,19 @@ export default function CustomerMenu() {
                 <div className="flex items-center justify-between">
                   <span className="badge badge-outline badge-lg">{item.category}</span>
                   
-                  {getCartQuantity(item.id) > 0 ? (
+                  {/* Show availability status */}
+                  {item.available === false && (
+                    <span className="badge badge-error badge-sm">Unavailable</span>
+                  )}
+                  
+                  {item.available === false ? (
+                    <button
+                      disabled
+                      className="btn btn-disabled btn-sm cursor-not-allowed"
+                    >
+                      Unavailable
+                    </button>
+                  ) : getCartQuantity(item.id) > 0 ? (
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => removeFromCart(item.id)}
