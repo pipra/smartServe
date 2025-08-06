@@ -69,11 +69,7 @@ function Cashier() {
         id: doc.id,
         ...doc.data()
       }))
-      setOrders(ordersData.sort((a, b) => {
-        const aTime = a.timestamp || a.createdAt
-        const bTime = b.timestamp || b.createdAt
-        return new Date(bTime) - new Date(aTime)
-      }))
+      setOrders(ordersData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch (error) {
       console.error('Error fetching orders:', error)
     }
@@ -86,30 +82,14 @@ function Cashier() {
         id: doc.id,
         ...doc.data()
       }))
-      
-      // Debug: Log all orders to see their structure
-      console.log('All orders:', ordersData)
-      
-      // Filter orders that are NOT pending or cancelled or completed - only show orders ready for billing
-      const confirmedOrdersData = ordersData.filter(order => {
-        // Order must have a status and it should not be pending, cancelled, or completed
-        if (!order.status) {
-          return false // Orders without status are not ready for billing
-        }
-        
-        return order.status !== 'pending' && 
-               order.status !== 'cancelled' &&
-               order.status !== 'completed' // Don't show already completed orders
-      })
-      
-      // Debug: Log filtered orders
-      console.log('Confirmed orders for billing:', confirmedOrdersData)
-      
-      setConfirmedOrders(confirmedOrdersData.sort((a, b) => {
-        const aTime = a.timestamp || a.createdAt
-        const bTime = b.timestamp || b.createdAt
-        return new Date(bTime) - new Date(aTime)
-      }))
+      // Filter orders that are NOT pending or cancelled or completed - these should appear in billing list
+      const confirmedOrdersData = ordersData.filter(order => 
+        order.status && 
+        order.status !== 'pending' && 
+        order.status !== 'cancelled' &&
+        order.status !== 'completed' // Don't show already completed orders
+      )
+      setConfirmedOrders(confirmedOrdersData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch (error) {
       console.error('Error fetching confirmed orders:', error)
     }
@@ -119,28 +99,14 @@ function Cashier() {
     try {
       setLoading(true)
       await updateDoc(doc(db, 'Orders', orderId), {
-        status: 'billing',
+        status: 'billed',
         billedBy: userFullName,
         billedAt: new Date().toISOString()
       })
       
-      // Update local state immediately to show Mark Complete button without waiting for refresh
-      setConfirmedOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
-            ? { ...order, status: 'billing', billedBy: userFullName, billedAt: new Date().toISOString() }
-            : order
-        )
-      )
-      
-      // Also update the main orders state
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
-            ? { ...order, status: 'billing', billedBy: userFullName, billedAt: new Date().toISOString() }
-            : order
-        )
-      )
+      // Refresh orders
+      fetchConfirmedOrders()
+      fetchOrders()
       
       alert('Order bill processed successfully!')
       setSelectedOrderForBilling(null)
@@ -173,62 +139,22 @@ function Cashier() {
     setLoading(false)
   }
 
-  const completeAllUserOrders = async (userOrders) => {
-    try {
-      setLoading(true)
-      
-      // First, process bills for any orders that haven't been billed yet
-      const unbilledOrders = userOrders.filter(order => 
-        !order.status || order.status === 'confirmed' || order.status === 'ready'
-      )
-      
-      // Process bills for unbilled orders
-      for (const order of unbilledOrders) {
-        await updateDoc(doc(db, 'Orders', order.id), {
-          status: 'billing',
-          billedBy: userFullName,
-          billedAt: new Date().toISOString()
-        })
-      }
-      
-      // Then mark all orders as completed
-      for (const order of userOrders) {
-        await updateDoc(doc(db, 'Orders', order.id), {
-          status: 'completed',
-          completedBy: 'cashier',
-          completedAt: new Date().toISOString()
-        })
-      }
-      
-      // Refresh orders
-      fetchConfirmedOrders()
-      fetchOrders()
-      
-      alert(`All ${userOrders.length} orders completed successfully! ${unbilledOrders.length > 0 ? `(${unbilledOrders.length} orders were billed first)` : ''}`)
-    } catch (error) {
-      console.error('Error completing all orders:', error)
-      alert('Error completing orders. Please try again.')
-    }
-    setLoading(false)
-  }
-
   const getWaiterOrders = (userName) => {
     return confirmedOrders.filter(order => 
-      order.customerName === userName ||
       order.waiterName === userName || 
-      order.placedBy === userName ||
-      order.confirmedBy === userName
+      order.processedBy === userName ||
+      order.customerInfo?.name === userName ||
+      order.userName === userName
     )
   }
 
   const getOrdersByUser = () => {
     const groupedOrders = {}
     confirmedOrders.forEach(order => {
-      // Prioritize customer name for grouping, fallback to waiter name if no customer
-      const userName = order.customerName || 
+      const userName = order.userName || 
                      order.waiterName || 
-                     order.placedBy ||
-                     order.confirmedBy ||
+                     order.processedBy || 
+                     order.customerInfo?.name || 
                      'Unknown User'
       
       if (!groupedOrders[userName]) {
@@ -336,7 +262,7 @@ function Cashier() {
                         ৳{orders.filter(order => 
                           order.status === 'completed' && 
                           new Date(order.createdAt).toDateString() === new Date().toDateString()
-                        ).reduce((total, order) => total + (order.totalAmount || order.total || 0), 0).toFixed(0)}
+                        ).reduce((total, order) => total + (order.total || 0), 0).toFixed(0)}
                       </p>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
@@ -416,7 +342,7 @@ function Cashier() {
                               </div>
                               <div className="text-center">
                                 <p className="text-2xl font-bold text-green-600">
-                                  ৳{getWaiterOrders(selectedWaiter).reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0).toFixed(0)}
+                                  ৳{getWaiterOrders(selectedWaiter).reduce((sum, order) => sum + (order.total || 0), 0).toFixed(0)}
                                 </p>
                                 <p className="text-sm text-gray-600">Total Amount</p>
                               </div>
@@ -445,17 +371,16 @@ function Cashier() {
                                     Order #{order.id.substring(0, 8)}
                                   </h4>
                                   <p className="text-sm text-gray-500">
-                                    {order.timestamp ? new Date(order.timestamp.toDate()).toLocaleString() : 
-                                     order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
+                                    {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
                                   </p>
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                  order.status === 'billing' ? 'bg-purple-100 text-purple-800' :
+                                  order.status === 'billed' ? 'bg-purple-100 text-purple-800' :
                                   order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
                                   order.status === 'ready' ? 'bg-green-100 text-green-800' :
                                   'bg-yellow-100 text-yellow-800'
                                 }`}>
-                                  {order.status === 'billing' ? '💳 Billing' :
+                                  {order.status === 'billed' ? '💳 Billed' :
                                    order.status === 'confirmed' ? '🔄 Confirmed' :
                                    order.status === 'ready' ? '🍳 Ready' :
                                    order.status || 'Confirmed'}
@@ -509,14 +434,36 @@ function Cashier() {
                                 <div className="flex justify-between items-center">
                                   <span className="text-lg font-semibold text-gray-900">Order Total:</span>
                                   <span className="text-2xl font-bold text-teal-600">
-                                    ৳{order.totalAmount?.toFixed(0) || order.total?.toFixed(0) || '0'}
+                                    ৳{order.total?.toFixed(0) || '0'}
                                   </span>
                                 </div>
                               </div>
                             </div>
 
                             <div className="ml-6 flex flex-col space-y-3">
-                              {/* No buttons in individual order view - all processing done from main page */}
+                              {/* Show Process Bill if order hasn't been billed yet */}
+                              {(!order.status || order.status === 'confirmed' || order.status === 'ready') && (
+                                <button
+                                  onClick={() => setSelectedOrderForBilling(order)}
+                                  disabled={loading}
+                                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center space-x-2 shadow-lg"
+                                >
+                                  <span>💳</span>
+                                  <span>Process Bill</span>
+                                </button>
+                              )}
+                              
+                              {/* Show Mark Complete if order has been billed */}
+                              {order.status === 'billed' && (
+                                <button
+                                  onClick={() => setSelectedOrderForBilling(order)}
+                                  disabled={loading}
+                                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center space-x-2 shadow-lg"
+                                >
+                                  <span>✅</span>
+                                  <span>Mark Complete</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -527,14 +474,14 @@ function Cashier() {
                   // Show users summary with total cost and action buttons
                   <div className="divide-y divide-gray-200">
                     {Object.entries(getOrdersByUser()).map(([userName, userOrders]) => {
-                      const totalCost = userOrders.reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0);
+                      const totalCost = userOrders.reduce((sum, order) => sum + (order.total || 0), 0);
                       const orderCount = userOrders.length;
                       
-                      // Check if user has orders that need billing
+                      // Check if user has orders that need billing or completion
                       const hasPendingBills = userOrders.some(order => 
                         !order.status || order.status === 'confirmed' || order.status === 'ready'
                       );
-                      const hasBilledOrders = userOrders.some(order => order.status === 'billing');
+                      const hasBilledOrders = userOrders.some(order => order.status === 'billed');
                       
                       return (
                         <div key={userName} className="p-6 hover:bg-gray-50 transition-colors">
@@ -554,6 +501,8 @@ function Cashier() {
                                     <span className="font-semibold text-blue-600 text-lg">{orderCount}</span>
                                   </div>
                                   <div className="flex items-center space-x-2">
+                                    <span className="text-sm text-gray-600">Total:</span>
+                                    <span className="font-bold text-green-600 text-xl">৳{totalCost.toFixed(0)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -574,11 +523,11 @@ function Cashier() {
                               {hasPendingBills && (
                                 <button
                                   onClick={() => {
-                                    // Find first order that needs billing and process it directly
+                                    // Find first order that needs billing
                                     const orderToBill = userOrders.find(order => 
                                       !order.status || order.status === 'confirmed' || order.status === 'ready'
                                     );
-                                    if (orderToBill) processOrderBill(orderToBill.id);
+                                    if (orderToBill) setSelectedOrderForBilling(orderToBill);
                                   }}
                                   disabled={loading}
                                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center space-x-2 shadow-lg"
@@ -588,10 +537,14 @@ function Cashier() {
                                 </button>
                               )}
 
-                              {/* Complete All Button - only show if there are billed orders */}
+                              {/* Mark Complete Button - only show if there are billed orders */}
                               {hasBilledOrders && (
                                 <button
-                                  onClick={() => completeAllUserOrders(userOrders)}
+                                  onClick={() => {
+                                    // Find first billed order
+                                    const orderToComplete = userOrders.find(order => order.status === 'billed');
+                                    if (orderToComplete) setSelectedOrderForBilling(orderToComplete);
+                                  }}
                                   disabled={loading}
                                   className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center space-x-2 shadow-lg"
                                 >
@@ -616,14 +569,14 @@ function Cashier() {
                               {userOrders.slice(0, 3).map((order) => (
                                 <div key={order.id} className="bg-gray-100 px-3 py-1 rounded-full text-sm flex items-center space-x-2">
                                   <span className="text-gray-700">#{order.id.substring(0, 6)}</span>
-                                  <span className="text-teal-600 font-medium">৳{order.totalAmount?.toFixed(0) || order.total?.toFixed(0)}</span>
+                                  <span className="text-teal-600 font-medium">৳{order.total?.toFixed(0)}</span>
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    order.status === 'billing' ? 'bg-purple-100 text-purple-800' :
+                                    order.status === 'billed' ? 'bg-purple-100 text-purple-800' :
                                     order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
                                     order.status === 'ready' ? 'bg-green-100 text-green-800' :
                                     'bg-yellow-100 text-yellow-800'
                                   }`}>
-                                    {order.status === 'billing' ? '💳' :
+                                    {order.status === 'billed' ? '💳' :
                                      order.status === 'confirmed' ? '🔄' :
                                      order.status === 'ready' ? '🍳' :
                                      '⏳'}
@@ -713,7 +666,7 @@ function Cashier() {
                         <div className="mt-6 pt-4 border-t-2 border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4">
                           <div className="flex justify-between items-center">
                             <span className="text-xl font-bold text-gray-900">Total Amount:</span>
-                            <span className="text-2xl font-bold text-teal-600">৳{selectedOrderForBilling.totalAmount?.toFixed(0) || selectedOrderForBilling.total?.toFixed(0)}</span>
+                            <span className="text-2xl font-bold text-teal-600">৳{selectedOrderForBilling.total?.toFixed(0)}</span>
                           </div>
                         </div>
                       </div>
@@ -758,202 +711,56 @@ function Cashier() {
 
           {/* Order History Tab */}
           {activeTab === 'orders' && (
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="bg-white rounded-lg shadow-lg">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                        <span className="mr-3">📋</span>
-                        Order History
-                      </h2>
-                      <p className="text-gray-600 mt-1">Recent completed transactions and order details</p>
-                    </div>
-                    <button
-                      onClick={fetchOrders}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
-                    >
-                      <span>🔄</span>
-                      <span>Refresh</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Statistics Cards */}
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <h3 className="font-semibold text-green-900">Total Completed</h3>
-                      <p className="text-2xl font-bold text-green-600">
-                        {orders.filter(order => order.status === 'completed').length}
-                      </p>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h3 className="font-semibold text-blue-900">Today's Orders</h3>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {orders.filter(order => 
-                          order.status === 'completed' && 
-                          new Date(order.completedAt || order.createdAt || order.timestamp?.toDate()).toDateString() === new Date().toDateString()
-                        ).length}
-                      </p>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                      <h3 className="font-semibold text-purple-900">Total Revenue</h3>
-                      <p className="text-2xl font-bold text-purple-600">
-                        ৳{orders.filter(order => order.status === 'completed')
-                          .reduce((total, order) => total + (order.totalAmount || order.total || 0), 0).toFixed(0)}
-                      </p>
-                    </div>
-                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                      <h3 className="font-semibold text-orange-900">Avg Order Value</h3>
-                      <p className="text-2xl font-bold text-orange-600">
-                        ৳{orders.filter(order => order.status === 'completed').length > 0 ? 
-                          (orders.filter(order => order.status === 'completed')
-                            .reduce((total, order) => total + (order.totalAmount || order.total || 0), 0) / 
-                           orders.filter(order => order.status === 'completed').length).toFixed(0) : '0'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">Order History</h2>
+                <p className="text-gray-600">Recent transactions</p>
               </div>
-
-              {/* Orders List */}
-              <div className="bg-white rounded-lg shadow-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-semibold text-gray-900">Recent Completed Orders</h3>
-                    <div className="text-sm text-gray-600">
-                      {orders.filter(order => order.status === 'completed').length} completed orders
-                    </div>
-                  </div>
+              
+              {orders.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">
+                  <p>No orders processed yet.</p>
                 </div>
-
-                {orders.filter(order => order.status === 'completed').length === 0 ? (
-                  <div className="p-12 text-center text-gray-500">
-                    <div className="text-6xl mb-4">📝</div>
-                    <p className="text-xl mb-2">No completed orders yet</p>
-                    <p className="text-sm">Completed orders will appear here after processing</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-200">
-                    {orders.filter(order => order.status === 'completed')
-                      .sort((a, b) => {
-                        const aTime = new Date(a.completedAt || a.createdAt || a.timestamp?.toDate())
-                        const bTime = new Date(b.completedAt || b.createdAt || b.timestamp?.toDate())
-                        return bTime - aTime
-                      })
-                      .map((order) => (
-                        <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors">
-                          <div className="flex items-center justify-between">
-                            {/* Order Info */}
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                                <span className="text-white font-bold text-lg">✅</span>
-                              </div>
-                              <div>
-                                <h4 className="text-lg font-bold text-gray-900">
-                                  Order #{order.id.substring(0, 8)}
-                                </h4>
-                                <div className="flex items-center space-x-4 mt-1">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-sm text-gray-600">Customer:</span>
-                                    <span className="font-medium text-gray-900">
-                                      {order.customerName || order.customerInfo?.name || order.waiterName || 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-sm text-gray-600">Table:</span>
-                                    <span className="font-medium text-blue-600">
-                                      {order.tableNumber || order.customerInfo?.tableNumber || order.table || 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-sm text-gray-600">Items:</span>
-                                    <span className="font-medium text-purple-600">
-                                      {order.items?.length || 0}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Order Details */}
-                            <div className="text-right space-y-1">
-                              <div className="text-2xl font-bold text-green-600">
-                                ৳{(order.totalAmount || order.total || 0).toFixed(0)}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                Completed: {order.completedAt ? 
-                                  new Date(order.completedAt).toLocaleString() : 
-                                  order.createdAt ? new Date(order.createdAt).toLocaleString() :
-                                  order.timestamp ? new Date(order.timestamp.toDate()).toLocaleString() : 'N/A'}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                Processed by: {order.completedBy || order.billedBy || 'System'}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Order Items Preview */}
-                          <div className="mt-4 pl-16">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="text-sm text-gray-600">Order Items:</p>
-                              <div className="flex space-x-2">
-                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                  ✅ Completed
-                                </span>
-                                {order.billedAt && (
-                                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
-                                    💳 Billed
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {order.items?.slice(0, 4).map((item, index) => (
-                                <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm flex items-center space-x-2">
-                                  <span className="text-gray-700">{item.name}</span>
-                                  <span className="text-xs text-gray-500">×{item.quantity}</span>
-                                  <span className="text-teal-600 font-medium">৳{(item.price * item.quantity).toFixed(0)}</span>
-                                </div>
-                              )) || (
-                                <span className="text-gray-400 text-sm">No items listed</span>
-                              )}
-                              {order.items?.length > 4 && (
-                                <div className="bg-gray-200 px-3 py-1 rounded-full text-sm text-gray-600">
-                                  +{order.items.length - 4} more items
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Payment & Timing Info */}
-                          <div className="mt-3 pl-16">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-500">
-                              <div>
-                                <span className="font-medium">Payment:</span> {order.paymentMethod || 'Cash'}
-                              </div>
-                              <div>
-                                <span className="font-medium">Order Time:</span> {
-                                  order.timestamp ? new Date(order.timestamp.toDate()).toLocaleString() :
-                                  order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'
-                                }
-                              </div>
-                              <div>
-                                <span className="font-medium">Processing Time:</span> {
-                                  order.completedAt && (order.timestamp || order.createdAt) ? 
-                                  Math.round((new Date(order.completedAt) - new Date(order.timestamp?.toDate() || order.createdAt)) / (1000 * 60)) + ' mins' :
-                                  'N/A'
-                                }
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {orders.map((order) => (
+                        <tr key={order.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {order.id.substring(0, 8)}...
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {order.customerInfo?.name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.items?.length || 0} items
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ৳{order.total?.toFixed(0)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.paymentMethod}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
                       ))}
-                  </div>
-                )}
-              </div>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
