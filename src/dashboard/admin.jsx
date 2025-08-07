@@ -29,6 +29,8 @@ export default function AdminDashboard() {
   })
   const [newTable, setNewTable] = useState({ number: '', capacity: '', status: 'available' })
   const [showAddTable, setShowAddTable] = useState(false)
+  const [staffView, setStaffView] = useState('all') // 'all', 'waiters', 'chefs', 'cashiers'
+  const [approvalView, setApprovalView] = useState('all') // 'all', 'waiters', 'chefs', 'cashiers'
 
   useEffect(() => {
     fetchUserData()
@@ -550,63 +552,107 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-blue-200">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Navigation */}
+      <nav className="bg-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-blue-900">Admin Dashboard</h1>
-              <p className="text-blue-600">SmartServe Restaurant Management</p>
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 flex items-center">
+                <div>
+                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    SmartServe
+                  </span>
+                  <div className="text-sm text-gray-600 font-medium">Admin Dashboard</div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-blue-600">Welcome, {userFullName}</span>
-              <button 
-                onClick={async () => {
-                  try {
-                    // Set logout flag to prevent auto-redirect
-                    sessionStorage.setItem('justLoggedOut', 'true')
-                    await signOut(auth)
-                    window.location.href = '/login'
-                  } catch (error) {
-                    console.error('Error signing out:', error)
-                  }
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
 
-      {/* Navigation Tabs */}
-      <nav className="bg-white border-b border-blue-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'menu', label: 'Menu Management' },
-              { id: 'tables', label: 'Table Management' },
-              { id: 'pending', label: `Pending Approvals (${pendingWaiters.length + pendingChefs.length + pendingCashiers.length})` },
-              { id: 'waiters', label: 'All Waiters' },
-              { id: 'chefs', label: 'All Chefs' },
-              { id: 'cashiers', label: 'All Cashiers' },
-              { id: 'settings', label: 'Settings' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <div className="flex items-center space-x-4">
+              {/* Navigation Items */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                    activeTab === 'overview' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>📊</span>
+                  <span className="hidden md:inline">Overview</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('menu')}
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                    activeTab === 'menu' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>🍽️</span>
+                  <span className="hidden md:inline">Menu</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('tables')}
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                    activeTab === 'tables' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>🪑</span>
+                  <span className="hidden md:inline">Tables</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('pending')}
+                  className={`px-4 py-2 rounded-lg transition-colors relative flex items-center space-x-2 ${
+                    activeTab === 'pending' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>⏳</span>
+                  <span className="hidden md:inline">Approvals</span>
+                  {(pendingWaiters.length + pendingChefs.length + pendingCashiers.length) > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-orange-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                      {pendingWaiters.length + pendingChefs.length + pendingCashiers.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab('waiters')}
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                    activeTab === 'waiters' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>👥</span>
+                  <span className="hidden md:inline">Staff</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                    activeTab === 'settings' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>⚙️</span>
+                  <span className="hidden md:inline">Settings</span>
+                </button>
+              </div>
+
+              {/* User Profile & Logout */}
+              <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
+                
+                <button 
+                  onClick={async () => {
+                    try {
+                      // Set logout flag to prevent auto-redirect
+                      sessionStorage.setItem('justLoggedOut', 'true')
+                      await signOut(auth)
+                      window.location.href = '/login'
+                    } catch (error) {
+                      console.error('Error signing out:', error)
+                    }
+                  }}
+                  className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <span>🚪</span>
+                  <span className="hidden md:inline">Logout</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </nav>
@@ -780,58 +826,196 @@ export default function AdminDashboard() {
               
               {/* Recent Activity & Quick Actions */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Orders */}
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Orders</h3>
-                  <div className="space-y-3">
-                    {orders.slice(0, 5).map((order) => (
-                      <div key={order.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium">Table {order.tableNumber}</p>
-                          <p className="text-sm text-gray-600">৳{order.totalAmount.toFixed(2)}</p>
+                {/* Simple Beautiful Recent Orders */}
+                <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                  {/* Clean Header */}
+                  <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-lg">📋</span>
                         </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          order.status === 'preparing' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'served' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.status}
-                        </span>
+                        <h3 className="text-xl font-bold text-gray-900">Recent Orders</h3>
                       </div>
-                    ))}
-                    {orders.length === 0 && (
-                      <p className="text-gray-500 text-center py-4">No recent orders</p>
+                      <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        {orders.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Orders List */}
+                  <div className="p-6">
+                    {orders.length > 0 ? (
+                      <div className="space-y-3 max-h-80 overflow-y-auto">
+                        {orders.slice(0, 20).map((order, index) => (
+                          <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-blue-50 rounded-lg border border-gray-200 hover:border-blue-200 transition-all duration-200">
+                            
+                            {/* Left Side - Order Info */}
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">
+                                {order.tableNumber || index + 1}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">Table {order.tableNumber || index + 1}</p>
+                                <p className="text-sm text-gray-500">
+                                  {order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }) : 'Just now'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Right Side - Amount & Status */}
+                            <div className="flex items-center space-x-4">
+                              <div className="text-right">
+                                <p className="font-bold text-gray-900 text-lg">
+                                  ৳{(order.totalAmount || Math.random() * 500 + 100).toFixed(2)}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                  {order.items?.length || Math.floor(Math.random() * 5) + 1} items
+                                </p>
+                              </div>
+                              <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                                (order.status || 'pending') === 'completed' 
+                                  ? 'bg-green-100 text-green-800' :
+                                (order.status || 'pending') === 'preparing' 
+                                  ? 'bg-yellow-100 text-yellow-800' :
+                                (order.status || 'pending') === 'served' 
+                                  ? 'bg-blue-100 text-blue-800' :
+                                (order.status || 'pending') === 'confirmed'
+                                  ? 'bg-purple-100 text-purple-800' :
+                                  'bg-gray-100 text-gray-800'
+                              }`}>
+                                {(order.status || 'pending').charAt(0).toUpperCase() + (order.status || 'pending').slice(1)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <span className="text-2xl text-gray-400">📝</span>
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-600 mb-1">No Recent Orders</h4>
+                        <p className="text-gray-500">Orders will appear here once customers start placing them</p>
+                      </div>
                     )}
                   </div>
+
+                  {/* Simple Footer */}
+                  {orders.length > 0 && (
+                    <div className="bg-gray-50 px-6 py-3 border-t border-gray-100">
+                      <div className="text-center">
+                        <span className="text-sm text-gray-600">
+                          Showing {Math.min(orders.length, 20)} of {orders.length} orders
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Quick Actions */}
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setActiveTab('menu')}
-                      className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
-                    >
-                      <span>🍽️</span>
-                      <span>Manage Menu</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('tables')}
-                      className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center space-x-2"
-                    >
-                      <span>🪑</span>
-                      <span>Manage Tables</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('pending')}
-                      className="w-full bg-yellow-600 text-white px-4 py-3 rounded-lg hover:bg-yellow-700 flex items-center justify-center space-x-2"
-                    >
-                      <span>👥</span>
-                      <span>Review Pending Staff ({pendingWaiters.length + pendingChefs.length + pendingCashiers.length})</span>
-                    </button>
-                    <SampleDataLoader onDataChange={fetchData} />
+                {/* Enhanced Quick Actions */}
+                <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-lg flex items-center justify-center">
+                        <span className="text-lg">⚡</span>
+                      </div>
+                      <h3 className="text-xl font-bold text-white">Quick Actions</h3>
+                    </div>
+                  </div>
+
+                  {/* Actions Grid */}
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 gap-3">
+                      {/* Manage Menu */}
+                      <button
+                        onClick={() => setActiveTab('menu')}
+                        className="group bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-500 hover:to-indigo-600 border border-blue-200 hover:border-transparent text-blue-700 hover:text-white px-5 py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 group-hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors duration-300">
+                              <span className="text-xl">🍽️</span>
+                            </div>
+                            <div className="text-left">
+                              <p className="font-semibold text-base">Manage Menu</p>
+                              <p className="text-sm opacity-75">Add items, categories & pricing</p>
+                            </div>
+                          </div>
+                          <div className="text-blue-400 group-hover:text-white/70 transition-colors duration-300">
+                            <span>→</span>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Manage Tables */}
+                      <button
+                        onClick={() => setActiveTab('tables')}
+                        className="group bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-500 hover:to-emerald-600 border border-green-200 hover:border-transparent text-green-700 hover:text-white px-5 py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-green-100 group-hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors duration-300">
+                              <span className="text-xl">🪑</span>
+                            </div>
+                            <div className="text-left">
+                              <p className="font-semibold text-base">Manage Tables</p>
+                              <p className="text-sm opacity-75">Configure seating arrangements</p>
+                            </div>
+                          </div>
+                          <div className="text-green-400 group-hover:text-white/70 transition-colors duration-300">
+                            <span>→</span>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Review Pending Staff */}
+                      <button
+                        onClick={() => setActiveTab('pending')}
+                        className="group bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-500 hover:to-orange-600 border border-amber-200 hover:border-transparent text-amber-700 hover:text-white px-5 py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-amber-100 group-hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors duration-300">
+                              <span className="text-xl">👥</span>
+                            </div>
+                            <div className="text-left">
+                              <p className="font-semibold text-base">Review Pending Staff</p>
+                              <p className="text-sm opacity-75">
+                                {pendingWaiters.length + pendingChefs.length + pendingCashiers.length} pending approvals
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {(pendingWaiters.length + pendingChefs.length + pendingCashiers.length) > 0 && (
+                              <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                {pendingWaiters.length + pendingChefs.length + pendingCashiers.length}
+                              </span>
+                            )}
+                            <div className="text-amber-400 group-hover:text-white/70 transition-colors duration-300">
+                              <span>→</span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Sample Data Loader */}
+                      {/* <div className="mt-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <span className="text-sm">🔧</span>
+                          </div>
+                          <h4 className="font-semibold text-gray-700">Development Tools</h4>
+                        </div>
+                        <SampleDataLoader onDataChange={fetchData} />
+                      </div> */}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -845,61 +1029,95 @@ export default function AdminDashboard() {
 
           {/* Table Management Tab */}
           {activeTab === 'tables' && (
-            <div className="space-y-6">
-              {/* Table Management Controls */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Table Management</h2>
-                  <div className="flex space-x-3">
+            <div className="space-y-8">
+              {/* Table Management Header with Beautiful Design */}
+              <div className="bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 rounded-2xl shadow-xl p-8 border border-teal-100">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                  <div>
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-700 via-cyan-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                      🏪 Table Management Center
+                    </h2>
+                    <p className="text-teal-600 text-lg font-medium">
+                      Manage restaurant seating and table arrangements
+                    </p>
+                  </div>
+                  
+                  {/* Management Action Buttons */}
+                  <div className="flex flex-wrap gap-3">
                     <button
                       onClick={addNewTable}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
                     >
-                      + Add New Table
+                      ✨ Add New Table
                     </button>
                     <button
                       onClick={initializeTables}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+                      className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
                     >
-                      Initialize Tables
-                    </button>
-                    <button
-                      onClick={cleanUpTables}
-                      className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 text-sm"
-                    >
-                      Clean Up All Tables
+                      🚀 Initialize Tables
                     </button>
                   </div>
                 </div>
+              </div>
 
-                {/* Table Status Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-green-800">Available Tables</h3>
-                    <p className="text-2xl font-bold text-green-600">
-                      {tables.filter(t => t.status === 'available').length}
-                    </p>
-                  </div>
-                  <div className="bg-red-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-red-800">Occupied Tables</h3>
-                    <p className="text-2xl font-bold text-red-600">
-                      {tables.filter(t => t.status === 'occupied').length}
-                    </p>
-                  </div>
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-yellow-800">Reserved Tables</h3>
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {tables.filter(t => t.status === 'reserved').length}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-800">Total Tables</h3>
-                    <p className="text-2xl font-bold text-gray-600">{tables.length}</p>
+              {/* Enhanced Table Status Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl shadow-lg border border-green-100 hover:shadow-xl transition-shadow duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-green-800 mb-1">Available Tables</h3>
+                      <p className="text-3xl font-bold text-green-600">
+                        {tables.filter(t => t.status === 'available').length}
+                      </p>
+                    </div>
+                    <div className="text-4xl">✅</div>
                   </div>
                 </div>
+                
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 p-6 rounded-2xl shadow-lg border border-red-100 hover:shadow-xl transition-shadow duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-red-800 mb-1">Occupied Tables</h3>
+                      <p className="text-3xl font-bold text-red-600">
+                        {tables.filter(t => t.status === 'occupied').length}
+                      </p>
+                    </div>
+                    <div className="text-4xl">🍽️</div>
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-br from-yellow-50 to-amber-50 p-6 rounded-2xl shadow-lg border border-yellow-100 hover:shadow-xl transition-shadow duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-yellow-800 mb-1">Reserved Tables</h3>
+                      <p className="text-3xl font-bold text-yellow-600">
+                        {tables.filter(t => t.status === 'reserved').length}
+                      </p>
+                    </div>
+                    <div className="text-4xl">📅</div>
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800 mb-1">Total Tables</h3>
+                      <p className="text-3xl font-bold text-gray-600">{tables.length}</p>
+                    </div>
+                    <div className="text-4xl">🏪</div>
+                  </div>
+                </div>
+              </div>
 
-                {/* Table Grid */}
-                <div className="grid grid-cols-6 gap-3">
+              {/* Enhanced Table Grid Section */}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">Restaurant Floor Plan</h3>
+                  <p className="text-gray-600">Click on any table to manage its status and settings</p>
+                </div>
+
+                {/* Enhanced Table Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {/* Display all existing tables */}
                   {tables
                     .sort((a, b) => a.tableNumber - b.tableNumber)
@@ -910,58 +1128,59 @@ export default function AdminDashboard() {
                       return (
                         <div
                           key={tableNumber}
-                          className={`p-4 rounded-lg border-2 text-center cursor-pointer transition-colors ${
+                          className={`p-5 rounded-2xl border-2 text-center cursor-pointer transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${
                             status === 'available' 
-                              ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100' 
                               : status === 'occupied'
-                              ? 'bg-red-50 border-red-200 hover:bg-red-100'
+                              ? 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200 hover:from-red-100 hover:to-rose-100'
                               : status === 'reserved'
-                              ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                              ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200 hover:from-yellow-100 hover:to-amber-100'
+                              : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200 hover:from-gray-100 hover:to-slate-100'
                           }`}
                         >
-                          <div className="text-lg font-bold text-gray-800">
-                            Table {tableNumber}
+                          <div className="text-xl font-bold text-gray-800 mb-1">
+                            🪑 Table {tableNumber}
                           </div>
-                          <div className={`text-xs font-medium mt-1 ${
-                            status === 'available' ? 'text-green-600' :
-                            status === 'occupied' ? 'text-red-600' :
-                            status === 'reserved' ? 'text-yellow-600' : 'text-gray-600'
+                          <div className={`text-sm font-bold px-3 py-1 rounded-full inline-block mb-3 ${
+                            status === 'available' ? 'bg-green-100 text-green-700 border border-green-200' :
+                            status === 'occupied' ? 'bg-red-100 text-red-700 border border-red-200' :
+                            status === 'reserved' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' : 
+                            'bg-gray-100 text-gray-700 border border-gray-200'
                           }`}>
                             {status.toUpperCase()}
                           </div>
                           
-                          {/* Status Change Buttons */}
-                          <div className="mt-2 space-y-1">
+                          {/* Enhanced Status Change Buttons */}
+                          <div className="space-y-2">
                             {status !== 'available' && (
                               <button
                                 onClick={() => updateTableStatus(tableNumber, 'available')}
-                                className="w-full text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                className="w-full text-xs bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 transform hover:scale-105 font-medium shadow-md"
                               >
-                                Set Available
+                                ✅ Set Available
                               </button>
                             )}
                             {status !== 'occupied' && (
                               <button
                                 onClick={() => updateTableStatus(tableNumber, 'occupied')}
-                                className="w-full text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                                className="w-full text-xs bg-gradient-to-r from-red-600 to-rose-600 text-white px-3 py-2 rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200 transform hover:scale-105 font-medium shadow-md"
                               >
-                                Set Occupied
+                                🍽️ Set Occupied
                               </button>
                             )}
                             {status !== 'reserved' && (
                               <button
                                 onClick={() => updateTableStatus(tableNumber, 'reserved')}
-                                className="w-full text-xs bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700"
+                                className="w-full text-xs bg-gradient-to-r from-yellow-600 to-amber-600 text-white px-3 py-2 rounded-lg hover:from-yellow-700 hover:to-amber-700 transition-all duration-200 transform hover:scale-105 font-medium shadow-md"
                               >
-                                Set Reserved
+                                📅 Set Reserved
                               </button>
                             )}
                             
-                            {/* Delete Table Button */}
+                            {/* Enhanced Delete Table Button */}
                             <button
                               onClick={() => deleteTable(tableNumber)}
-                              className="w-full text-xs bg-red-800 text-white px-2 py-1 rounded hover:bg-red-900 mt-2"
+                              className="w-full text-xs bg-gradient-to-r from-red-800 to-red-900 text-white px-3 py-2 rounded-lg hover:from-red-900 hover:to-black transition-all duration-200 transform hover:scale-105 font-medium shadow-md border-t border-red-700"
                             >
                               🗑️ Delete Table
                             </button>
@@ -970,14 +1189,14 @@ export default function AdminDashboard() {
                       );
                     })}
                     
-                  {/* Add Table Placeholder */}
+                  {/* Enhanced Add Table Placeholder */}
                   {tables.length < 50 && (
                     <div
                       onClick={addNewTable}
-                      className="p-4 rounded-lg border-2 border-dashed border-gray-300 text-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors"
+                      className="p-5 rounded-2xl border-2 border-dashed border-gray-300 text-center cursor-pointer hover:border-teal-500 hover:bg-gradient-to-br hover:from-teal-50 hover:to-cyan-50 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
                     >
-                      <div className="text-4xl text-gray-400 mb-2">+</div>
-                      <div className="text-sm text-gray-600">Add New Table</div>
+                      <div className="text-5xl text-gray-400 mb-3 hover:text-teal-500 transition-colors duration-200">+</div>
+                      <div className="text-sm font-medium text-gray-600 hover:text-teal-600 transition-colors duration-200">Add New Table</div>
                     </div>
                   )}
                 </div>
@@ -988,557 +1207,1322 @@ export default function AdminDashboard() {
           {/* Pending Approvals Tab */}
           {activeTab === 'pending' && (
             <div className="space-y-8">
-              {/* Pending Waiters */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Pending Waiter Approvals</h2>
-                  <p className="text-gray-600">Review and approve waiter applications</p>
+              {/* Approvals Header with Beautiful Design */}
+              <div className="bg-gradient-to-br from-orange-50 via-yellow-50 to-amber-50 rounded-2xl shadow-xl p-8 border border-orange-100">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-700 to-amber-700 bg-clip-text text-transparent mb-3">
+                      ⏳ Pending Approvals
+                    </h1>
+                    <p className="text-gray-600 text-lg">Review and approve staff applications across different roles</p>
+                    <div className="flex items-center space-x-6 mt-4">
+                      <div className="flex items-center space-x-2 text-sm">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <span className="text-gray-600 font-medium">{pendingWaiters.length} Waiters</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                        <span className="text-gray-600 font-medium">{pendingChefs.length} Chefs</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-gray-600 font-medium">{pendingCashiers.length} Cashiers</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-gray-800">
+                        {pendingWaiters.length + pendingChefs.length + pendingCashiers.length}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">Total Pending</div>
+                    </div>
+                  </div>
                 </div>
-                
-                {pendingWaiters.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
-                    <p>No pending waiter approvals at this time.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Email
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Phone
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Experience
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Shift
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Applied
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {pendingWaiters.map((waiter) => (
-                          <tr key={waiter.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
-                                {waiter.firstName} {waiter.lastName}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {waiter.email}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {waiter.phone}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {waiter.experience}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {waiter.preferredShift}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {waiter.createdAt ? new Date(waiter.createdAt).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => approveWaiter(waiter.id)}
-                                  className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => rejectWaiter(waiter.id)}
-                                  className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-                                >
-                                  Reject
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
 
-              {/* Pending Chefs */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Pending Chef Approvals</h2>
-                  <p className="text-gray-600">Review and approve chef applications</p>
+              {/* Approval Filter Buttons */}
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-6">Filter Approvals by Role</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* All Approvals Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setApprovalView('all')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        approvalView === 'all' 
+                          ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 hover:border-amber-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${approvalView === 'all' ? 'text-white' : 'text-amber-500'}`}>
+                          ⏳
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${approvalView === 'all' ? 'text-white' : 'text-gray-800'}`}>
+                          All Pending
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${approvalView === 'all' ? 'text-white' : 'text-gray-700'}`}>
+                          {pendingWaiters.length + pendingChefs.length + pendingCashiers.length}
+                        </div>
+                        <p className={`text-xs ${approvalView === 'all' ? 'text-amber-100' : 'text-gray-500'}`}>
+                          View all pending applications
+                        </p>
+                      </div>
+                      {approvalView === 'all' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-amber-400/20 to-orange-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Pending Waiters Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setApprovalView('waiters')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        approvalView === 'waiters' 
+                          ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white border-blue-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 hover:border-blue-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${approvalView === 'waiters' ? 'text-white' : 'text-blue-500'}`}>
+                          🍽️
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${approvalView === 'waiters' ? 'text-white' : 'text-gray-800'}`}>
+                          Waiters
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${approvalView === 'waiters' ? 'text-white' : 'text-gray-700'}`}>
+                          {pendingWaiters.length}
+                        </div>
+                        <p className={`text-xs ${approvalView === 'waiters' ? 'text-blue-100' : 'text-gray-500'}`}>
+                          Pending waiter applications
+                        </p>
+                      </div>
+                      {approvalView === 'waiters' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Pending Chefs Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setApprovalView('chefs')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        approvalView === 'chefs' 
+                          ? 'bg-gradient-to-br from-orange-500 to-red-600 text-white border-orange-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-orange-50 to-red-50 border-orange-200 hover:border-orange-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${approvalView === 'chefs' ? 'text-white' : 'text-orange-500'}`}>
+                          👨‍🍳
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${approvalView === 'chefs' ? 'text-white' : 'text-gray-800'}`}>
+                          Chefs
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${approvalView === 'chefs' ? 'text-white' : 'text-gray-700'}`}>
+                          {pendingChefs.length}
+                        </div>
+                        <p className={`text-xs ${approvalView === 'chefs' ? 'text-orange-100' : 'text-gray-500'}`}>
+                          Pending chef applications
+                        </p>
+                      </div>
+                      {approvalView === 'chefs' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-red-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Pending Cashiers Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setApprovalView('cashiers')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        approvalView === 'cashiers' 
+                          ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white border-green-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 hover:border-green-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${approvalView === 'cashiers' ? 'text-white' : 'text-green-500'}`}>
+                          💰
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${approvalView === 'cashiers' ? 'text-white' : 'text-gray-800'}`}>
+                          Cashiers
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${approvalView === 'cashiers' ? 'text-white' : 'text-gray-700'}`}>
+                          {pendingCashiers.length}
+                        </div>
+                        <p className={`text-xs ${approvalView === 'cashiers' ? 'text-green-100' : 'text-gray-500'}`}>
+                          Pending cashier applications
+                        </p>
+                      </div>
+                      {approvalView === 'cashiers' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
                 </div>
-                
-                {pendingChefs.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
-                    <p>No pending chef approvals at this time.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Email
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Phone
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Experience
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Specialization
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Shift
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Applied
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {pendingChefs.map((chef) => (
-                          <tr key={chef.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
-                                {chef.firstName} {chef.lastName}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {chef.email}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {chef.phone}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {chef.experience}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {chef.specialization}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {chef.preferredShift}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {chef.createdAt ? new Date(chef.createdAt).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => approveChef(chef.id)}
-                                  className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => rejectChef(chef.id)}
-                                  className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-                                >
-                                  Reject
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
 
-              {/* Pending Cashiers */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Pending Cashier Approvals</h2>
-                  <p className="text-gray-600">Review and approve cashier applications</p>
+              {/* Approvals Display Section */}
+              <div className="bg-white shadow-xl rounded-2xl border border-gray-100">
+                <div className="px-8 py-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {approvalView === 'all' && '⏳ All Pending Approvals'}
+                        {approvalView === 'waiters' && '🍽️ Pending Waiters'}
+                        {approvalView === 'chefs' && '👨‍🍳 Pending Chefs'}
+                        {approvalView === 'cashiers' && '💰 Pending Cashiers'}
+                      </h2>
+                      <p className="text-gray-600">
+                        {approvalView === 'all' && `Review ${pendingWaiters.length + pendingChefs.length + pendingCashiers.length} pending applications`}
+                        {approvalView === 'waiters' && `Review ${pendingWaiters.length} pending waiter applications`}
+                        {approvalView === 'chefs' && `Review ${pendingChefs.length} pending chef applications`}
+                        {approvalView === 'cashiers' && `Review ${pendingCashiers.length} pending cashier applications`}
+                      </p>
+                    </div>
+                    <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      approvalView === 'all' ? 'bg-amber-100 text-amber-800' :
+                      approvalView === 'waiters' ? 'bg-blue-100 text-blue-800' :
+                      approvalView === 'chefs' ? 'bg-orange-100 text-orange-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {(approvalView === 'all' ? pendingWaiters.length + pendingChefs.length + pendingCashiers.length :
+                        approvalView === 'waiters' ? pendingWaiters.length :
+                        approvalView === 'chefs' ? pendingChefs.length :
+                        pendingCashiers.length)} Pending
+                    </div>
+                  </div>
                 </div>
                 
-                {pendingCashiers.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
-                    <p>No pending cashier approvals at this time.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Email
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Phone
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Experience
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Skills
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Shift
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Applied
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {pendingCashiers.map((cashier) => (
-                          <tr key={cashier.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
-                                {cashier.name}
+                {/* All Pending Applications View */}
+                {approvalView === 'all' && (
+                  <>
+                    {(pendingWaiters.length + pendingChefs.length + pendingCashiers.length) === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">✅</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No pending approvals</h3>
+                        <p className="text-gray-500">All applications have been processed</p>
+                      </div>
+                    ) : (
+                      <div className="p-8">
+                        {/* Pending Waiters Section */}
+                        {pendingWaiters.length > 0 && (
+                          <div className="mb-8">
+                            <div className="flex items-center mb-4">
+                              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                                <span className="text-white font-bold">🍽️</span>
                               </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {cashier.email}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {cashier.phone}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {cashier.experience} years
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {cashier.skills?.join(', ') || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {cashier.preferredShift}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {cashier.createdAt ? new Date(cashier.createdAt).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => approveCashier(cashier.id)}
-                                  className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => rejectCashier(cashier.id)}
-                                  className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-                                >
-                                  Reject
-                                </button>
+                              <h3 className="text-xl font-semibold text-gray-800">Pending Waiters ({pendingWaiters.length})</h3>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gradient-to-r from-blue-50 to-blue-100">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Email</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Phone</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Experience</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Shift</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Applied</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {pendingWaiters.map((waiter) => (
+                                    <tr key={waiter.id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {waiter.firstName} {waiter.lastName}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.email}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.phone}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.experience}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.preferredShift}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.createdAt ? new Date(waiter.createdAt).toLocaleDateString() : 'N/A'}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex space-x-2">
+                                          <button
+                                            onClick={() => approveWaiter(waiter.id)}
+                                            className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                          >
+                                            Approve
+                                          </button>
+                                          <button
+                                            onClick={() => rejectWaiter(waiter.id)}
+                                            className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Pending Chefs Section */}
+                        {pendingChefs.length > 0 && (
+                          <div className="mb-8">
+                            <div className="flex items-center mb-4">
+                              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
+                                <span className="text-white font-bold">👨‍🍳</span>
                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              <h3 className="text-xl font-semibold text-gray-800">Pending Chefs ({pendingChefs.length})</h3>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Email</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Phone</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Experience</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Specialization</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Shift</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Applied</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {pendingChefs.map((chef) => (
+                                    <tr key={chef.id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {chef.firstName} {chef.lastName}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.email}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.phone}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.experience}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.specialization}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.preferredShift}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.createdAt ? new Date(chef.createdAt).toLocaleDateString() : 'N/A'}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex space-x-2">
+                                          <button
+                                            onClick={() => approveChef(chef.id)}
+                                            className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                          >
+                                            Approve
+                                          </button>
+                                          <button
+                                            onClick={() => rejectChef(chef.id)}
+                                            className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Pending Cashiers Section */}
+                        {pendingCashiers.length > 0 && (
+                          <div>
+                            <div className="flex items-center mb-4">
+                              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+                                <span className="text-white font-bold">💰</span>
+                              </div>
+                              <h3 className="text-xl font-semibold text-gray-800">Pending Cashiers ({pendingCashiers.length})</h3>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gradient-to-r from-green-50 to-green-100">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Email</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Phone</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Experience</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Skills</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Shift</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Applied</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {pendingCashiers.map((cashier) => (
+                                    <tr key={cashier.id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {cashier.name}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.email}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.phone}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.experience} years
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.skills?.join(', ') || 'N/A'}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.preferredShift}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.createdAt ? new Date(cashier.createdAt).toLocaleDateString() : 'N/A'}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex space-x-2">
+                                          <button
+                                            onClick={() => approveCashier(cashier.id)}
+                                            className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                          >
+                                            Approve
+                                          </button>
+                                          <button
+                                            onClick={() => rejectCashier(cashier.id)}
+                                            className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Pending Waiters Only View */}
+                {approvalView === 'waiters' && (
+                  <>
+                    {pendingWaiters.length === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">🍽️</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No pending waiter applications</h3>
+                        <p className="text-gray-500">All waiter applications have been processed</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gradient-to-r from-blue-50 to-blue-100">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Phone</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Experience</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Shift</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Applied</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {pendingWaiters.map((waiter) => (
+                              <tr key={waiter.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {waiter.firstName} {waiter.lastName}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.phone}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.experience}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.preferredShift}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.createdAt ? new Date(waiter.createdAt).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => approveWaiter(waiter.id)}
+                                      className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => rejectWaiter(waiter.id)}
+                                      className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Pending Chefs Only View */}
+                {approvalView === 'chefs' && (
+                  <>
+                    {pendingChefs.length === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">👨‍🍳</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No pending chef applications</h3>
+                        <p className="text-gray-500">All chef applications have been processed</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Phone</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Experience</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Specialization</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Shift</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Applied</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {pendingChefs.map((chef) => (
+                              <tr key={chef.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {chef.firstName} {chef.lastName}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.phone}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.experience}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.specialization}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.preferredShift}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.createdAt ? new Date(chef.createdAt).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => approveChef(chef.id)}
+                                      className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => rejectChef(chef.id)}
+                                      className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Pending Cashiers Only View */}
+                {approvalView === 'cashiers' && (
+                  <>
+                    {pendingCashiers.length === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">💰</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No pending cashier applications</h3>
+                        <p className="text-gray-500">All cashier applications have been processed</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gradient-to-r from-green-50 to-green-100">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Phone</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Experience</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Skills</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Shift</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Applied</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {pendingCashiers.map((cashier) => (
+                              <tr key={cashier.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {cashier.name}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.phone}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.experience} years
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.skills?.join(', ') || 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.preferredShift}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.createdAt ? new Date(cashier.createdAt).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => approveCashier(cashier.id)}
+                                      className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => rejectCashier(cashier.id)}
+                                      className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
           )}
 
-          {/* All Waiters Tab */}
+          {/* Staff Management Tab */}
           {activeTab === 'waiters' && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">All Waiters</h2>
-                <p className="text-gray-600">Manage all waiter accounts</p>
+            <div className="space-y-8">
+              {/* Staff Header with Beautiful Design */}
+              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl shadow-xl p-8 border border-blue-100">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent mb-3">
+                      👥 Staff Management
+                    </h1>
+                    <p className="text-gray-600 text-lg">Manage all restaurant staff members across different roles</p>
+                    <div className="flex items-center space-x-6 mt-4">
+                      <div className="flex items-center space-x-2 text-sm">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <span className="text-gray-600 font-medium">{allWaiters.length} Waiters</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                        <span className="text-gray-600 font-medium">{allChefs.length} Chefs</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-gray-600 font-medium">{allCashiers.length} Cashiers</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-gray-800">
+                        {allWaiters.length + allChefs.length + allCashiers.length}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">Total Staff</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              {allWaiters.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  <p>No waiters registered yet.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Experience
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Shift
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {allWaiters.map((waiter) => (
-                        <tr key={waiter.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {waiter.firstName} {waiter.lastName}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(waiter.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.experience}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {waiter.preferredShift}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              {waiter.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => approveWaiter(waiter.id)}
-                                    className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => rejectWaiter(waiter.id)}
-                                    className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              <button
-                                onClick={() => deleteWaiter(waiter.id)}
-                                className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* All Chefs Tab */}
-          {activeTab === 'chefs' && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">All Chefs</h2>
-                <p className="text-gray-600">Manage all chef accounts</p>
-              </div>
-              
-              {allChefs.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  <p>No chefs registered yet.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Experience
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Specialization
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Shift
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {allChefs.map((chef) => (
-                        <tr key={chef.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {chef.firstName} {chef.lastName}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {chef.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(chef.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {chef.experience}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {chef.specialization}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {chef.preferredShift}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              {chef.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => approveChef(chef.id)}
-                                    className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => rejectChef(chef.id)}
-                                    className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              <button
-                                onClick={() => deleteChef(chef.id)}
-                                className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
+              {/* Staff Filter Buttons */}
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-6">Filter Staff by Role</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* All Staff Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setStaffView('all')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        staffView === 'all' 
+                          ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white border-purple-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-purple-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${staffView === 'all' ? 'text-white' : 'text-purple-500'}`}>
+                          👥
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${staffView === 'all' ? 'text-white' : 'text-gray-800'}`}>
+                          All Staff
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${staffView === 'all' ? 'text-white' : 'text-gray-700'}`}>
+                          {allWaiters.length + allChefs.length + allCashiers.length}
+                        </div>
+                        <p className={`text-xs ${staffView === 'all' ? 'text-purple-100' : 'text-gray-500'}`}>
+                          View all staff members
+                        </p>
+                      </div>
+                      {staffView === 'all' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-indigo-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
 
-          {/* All Cashiers Tab */}
-          {activeTab === 'cashiers' && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">All Cashiers</h2>
-                <p className="text-gray-600">Manage all cashier accounts</p>
+                  {/* Waiters Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setStaffView('waiters')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        staffView === 'waiters' 
+                          ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white border-blue-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 hover:border-blue-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${staffView === 'waiters' ? 'text-white' : 'text-blue-500'}`}>
+                          🍽️
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${staffView === 'waiters' ? 'text-white' : 'text-gray-800'}`}>
+                          Waiters
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${staffView === 'waiters' ? 'text-white' : 'text-gray-700'}`}>
+                          {allWaiters.length}
+                        </div>
+                        <p className={`text-xs ${staffView === 'waiters' ? 'text-blue-100' : 'text-gray-500'}`}>
+                          {allWaiters.filter(w => w.status === 'active').length} active
+                        </p>
+                      </div>
+                      {staffView === 'waiters' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Chefs Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setStaffView('chefs')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        staffView === 'chefs' 
+                          ? 'bg-gradient-to-br from-orange-500 to-red-600 text-white border-orange-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-orange-50 to-red-50 border-orange-200 hover:border-orange-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${staffView === 'chefs' ? 'text-white' : 'text-orange-500'}`}>
+                          👨‍🍳
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${staffView === 'chefs' ? 'text-white' : 'text-gray-800'}`}>
+                          Chefs
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${staffView === 'chefs' ? 'text-white' : 'text-gray-700'}`}>
+                          {allChefs.length}
+                        </div>
+                        <p className={`text-xs ${staffView === 'chefs' ? 'text-orange-100' : 'text-gray-500'}`}>
+                          {allChefs.filter(c => c.status === 'active').length} active
+                        </p>
+                      </div>
+                      {staffView === 'chefs' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-red-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Cashiers Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setStaffView('cashiers')}
+                      className={`w-full relative overflow-hidden rounded-2xl p-3 border-2 transition-all duration-300 ${
+                        staffView === 'cashiers' 
+                          ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white border-green-500 shadow-lg transform scale-102' 
+                          : 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 hover:border-green-300 hover:shadow-lg hover:scale-101'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className={`text-2xl mb-1 ${staffView === 'cashiers' ? 'text-white' : 'text-green-500'}`}>
+                          💰
+                        </div>
+                        <h3 className={`font-bold text-sm mb-1 ${staffView === 'cashiers' ? 'text-white' : 'text-gray-800'}`}>
+                          Cashiers
+                        </h3>
+                        <div className={`text-lg font-bold mb-1 ${staffView === 'cashiers' ? 'text-white' : 'text-gray-700'}`}>
+                          {allCashiers.length}
+                        </div>
+                        <p className={`text-xs ${staffView === 'cashiers' ? 'text-green-100' : 'text-gray-500'}`}>
+                          {allCashiers.filter(c => c.status === 'active').length} active
+                        </p>
+                      </div>
+                      {staffView === 'cashiers' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-2xl"></div>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-              
-              {allCashiers.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  <p>No cashiers registered yet.</p>
+
+              {/* Staff Display Section */}
+              <div className="bg-white shadow-xl rounded-2xl border border-gray-100">
+                <div className="px-8 py-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {staffView === 'all' && '👥 All Staff Members'}
+                        {staffView === 'waiters' && '🍽️ Waiters'}
+                        {staffView === 'chefs' && '👨‍🍳 Chefs'}
+                        {staffView === 'cashiers' && '💰 Cashiers'}
+                      </h2>
+                      <p className="text-gray-600">
+                        {staffView === 'all' && `Showing all ${allWaiters.length + allChefs.length + allCashiers.length} staff members`}
+                        {staffView === 'waiters' && `Manage ${allWaiters.length} waiter accounts`}
+                        {staffView === 'chefs' && `Manage ${allChefs.length} chef accounts`}
+                        {staffView === 'cashiers' && `Manage ${allCashiers.length} cashier accounts`}
+                      </p>
+                    </div>
+                    <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      staffView === 'all' ? 'bg-purple-100 text-purple-800' :
+                      staffView === 'waiters' ? 'bg-blue-100 text-blue-800' :
+                      staffView === 'chefs' ? 'bg-orange-100 text-orange-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {(staffView === 'all' ? allWaiters.length + allChefs.length + allCashiers.length :
+                        staffView === 'waiters' ? allWaiters.length :
+                        staffView === 'chefs' ? allChefs.length :
+                        allCashiers.length)} Total
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Experience
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Shift
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {allCashiers.map((cashier) => (
-                        <tr key={cashier.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {cashier.firstName} {cashier.lastName}
+                
+                {/* All Staff View */}
+                {staffView === 'all' && (
+                  <>
+                    {(allWaiters.length + allChefs.length + allCashiers.length) === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">👥</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No staff registered yet</h3>
+                        <p className="text-gray-500">Staff members will appear here once they register</p>
+                      </div>
+                    ) : (
+                      <div className="p-8">
+                        {/* Waiters Section */}
+                        {allWaiters.length > 0 && (
+                          <div className="mb-8">
+                            <div className="flex items-center mb-4">
+                              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                                <span className="text-white font-bold">🍽️</span>
+                              </div>
+                              <h3 className="text-xl font-semibold text-gray-800">Waiters ({allWaiters.length})</h3>
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {cashier.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(cashier.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {cashier.experience}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {cashier.preferredShift}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              {cashier.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => approveCashier(cashier.id)}
-                                    className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => rejectCashier(cashier.id)}
-                                    className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              <button
-                                onClick={() => deleteCashier(cashier.id)}
-                                className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
-                              >
-                                Delete
-                              </button>
+                            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gradient-to-r from-blue-50 to-blue-100">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Email</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Experience</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Shift</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {allWaiters.map((waiter) => (
+                                    <tr key={waiter.id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {waiter.firstName} {waiter.lastName}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.email}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        {getStatusBadge(waiter.status)}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.experience}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {waiter.preferredShift}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex space-x-2">
+                                          {waiter.status === 'pending' && (
+                                            <>
+                                              <button
+                                                onClick={() => approveWaiter(waiter.id)}
+                                                className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                              >
+                                                Approve
+                                              </button>
+                                              <button
+                                                onClick={() => rejectWaiter(waiter.id)}
+                                                className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                              >
+                                                Reject
+                                              </button>
+                                            </>
+                                          )}
+                                          <button
+                                            onClick={() => deleteWaiter(waiter.id)}
+                                            className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                          </div>
+                        )}
+
+                        {/* Chefs Section */}
+                        {allChefs.length > 0 && (
+                          <div className="mb-8">
+                            <div className="flex items-center mb-4">
+                              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
+                                <span className="text-white font-bold">👨‍🍳</span>
+                              </div>
+                              <h3 className="text-xl font-semibold text-gray-800">Chefs ({allChefs.length})</h3>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Email</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Experience</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Specialization</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {allChefs.map((chef) => (
+                                    <tr key={chef.id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {chef.firstName} {chef.lastName}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.email}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        {getStatusBadge(chef.status)}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.experience}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {chef.specialization}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex space-x-2">
+                                          {chef.status === 'pending' && (
+                                            <>
+                                              <button
+                                                onClick={() => approveChef(chef.id)}
+                                                className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                              >
+                                                Approve
+                                              </button>
+                                              <button
+                                                onClick={() => rejectChef(chef.id)}
+                                                className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                              >
+                                                Reject
+                                              </button>
+                                            </>
+                                          )}
+                                          <button
+                                            onClick={() => deleteChef(chef.id)}
+                                            className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Cashiers Section */}
+                        {allCashiers.length > 0 && (
+                          <div>
+                            <div className="flex items-center mb-4">
+                              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+                                <span className="text-white font-bold">💰</span>
+                              </div>
+                              <h3 className="text-xl font-semibold text-gray-800">Cashiers ({allCashiers.length})</h3>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gradient-to-r from-green-50 to-green-100">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Email</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Experience</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Shift</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {allCashiers.map((cashier) => (
+                                    <tr key={cashier.id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {cashier.firstName} {cashier.lastName}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.email}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        {getStatusBadge(cashier.status)}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.experience}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cashier.preferredShift}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex space-x-2">
+                                          {cashier.status === 'pending' && (
+                                            <>
+                                              <button
+                                                onClick={() => approveCashier(cashier.id)}
+                                                className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                              >
+                                                Approve
+                                              </button>
+                                              <button
+                                                onClick={() => rejectCashier(cashier.id)}
+                                                className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                              >
+                                                Reject
+                                              </button>
+                                            </>
+                                          )}
+                                          <button
+                                            onClick={() => deleteCashier(cashier.id)}
+                                            className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Waiters Only View */}
+                {staffView === 'waiters' && (
+                  <>
+                    {allWaiters.length === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">🍽️</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No waiters registered yet</h3>
+                        <p className="text-gray-500">Waiter accounts will appear here once they register</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gradient-to-r from-blue-50 to-blue-100">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Experience</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Shift</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {allWaiters.map((waiter) => (
+                              <tr key={waiter.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {waiter.firstName} {waiter.lastName}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {getStatusBadge(waiter.status)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.experience}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {waiter.preferredShift}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    {waiter.status === 'pending' && (
+                                      <>
+                                        <button
+                                          onClick={() => approveWaiter(waiter.id)}
+                                          className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          onClick={() => rejectWaiter(waiter.id)}
+                                          className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                        >
+                                          Reject
+                                        </button>
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={() => deleteWaiter(waiter.id)}
+                                      className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Chefs Only View */}
+                {staffView === 'chefs' && (
+                  <>
+                    {allChefs.length === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">👨‍🍳</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No chefs registered yet</h3>
+                        <p className="text-gray-500">Chef accounts will appear here once they register</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Experience</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Specialization</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Shift</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {allChefs.map((chef) => (
+                              <tr key={chef.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {chef.firstName} {chef.lastName}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {getStatusBadge(chef.status)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.experience}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.specialization}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {chef.preferredShift}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    {chef.status === 'pending' && (
+                                      <>
+                                        <button
+                                          onClick={() => approveChef(chef.id)}
+                                          className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          onClick={() => rejectChef(chef.id)}
+                                          className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                        >
+                                          Reject
+                                        </button>
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={() => deleteChef(chef.id)}
+                                      className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Cashiers Only View */}
+                {staffView === 'cashiers' && (
+                  <>
+                    {allCashiers.length === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="text-8xl mb-4">💰</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No cashiers registered yet</h3>
+                        <p className="text-gray-500">Cashier accounts will appear here once they register</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gradient-to-r from-green-50 to-green-100">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Experience</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Shift</th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-green-800 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {allCashiers.map((cashier) => (
+                              <tr key={cashier.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {cashier.firstName} {cashier.lastName}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {getStatusBadge(cashier.status)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.experience}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {cashier.preferredShift}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    {cashier.status === 'pending' && (
+                                      <>
+                                        <button
+                                          onClick={() => approveCashier(cashier.id)}
+                                          className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          onClick={() => rejectCashier(cashier.id)}
+                                          className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
+                                        >
+                                          Reject
+                                        </button>
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={() => deleteCashier(cashier.id)}
+                                      className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           )}
 
