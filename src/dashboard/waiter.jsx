@@ -27,6 +27,7 @@ function Waiter() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [customerSearchQuery, setCustomerSearchQuery] = useState('')
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all') // New state for order status filtering
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
@@ -142,7 +143,11 @@ function Waiter() {
         
         const userData = userMap.get(customerName)
         userData.totalOrders += 1
-        userData.totalAmount += (order.totalAmount || 0)
+        
+        // Only include revenue from non-cancelled and non-pending orders
+        if (order.status !== 'cancelled' && order.status !== 'pending') {
+          userData.totalAmount += (order.totalAmount || 0)
+        }
         
         if (order.status !== 'completed' && order.status !== 'cancelled') {
           userData.activeOrders += 1
@@ -318,6 +323,7 @@ function Waiter() {
     setSelectedTableNumber(null)
     setSelectedCustomer(null)
     setFilteredOrders([])
+    setOrderStatusFilter('all') // Reset status filter as well
   }
 
   const handleLogout = async () => {
@@ -533,6 +539,13 @@ function Waiter() {
                   )}
                 </button>
                 <button
+                  onClick={openNewOrderModal}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                >
+                  <span>➕</span>
+                  <span className="hidden md:inline">Place Order</span>
+                </button>
+                <button
                   onClick={() => setActiveSection('profile')}
                   className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
                     activeSection === 'profile' ? 'bg-green-600 text-white' : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
@@ -540,13 +553,6 @@ function Waiter() {
                 >
                   <span>👤</span>
                   <span className="hidden md:inline">Profile</span>
-                </button>
-                <button
-                  onClick={openNewOrderModal}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                >
-                  <span>➕</span>
-                  <span className="hidden md:inline">Place Order</span>
                 </button>
               </div>
             </div>
@@ -650,69 +656,161 @@ function Waiter() {
                 </div>
               </div>
 
-              {/* Prepared Orders */}
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
+              {/* Prepared Orders - Modern Card Design */}
+              <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-orange-50 via-yellow-50 to-red-50 px-8 py-6 border-b border-orange-100">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-gray-900">Prepared Orders - Ready to Serve</h3>
-                    <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      {orders.filter(order => order.status === 'ready' || order.status === 'prepared').length} orders
-                    </span>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <span className="text-2xl">🍽️</span>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-1">Ready to Serve</h3>
+                        <p className="text-gray-600">Orders prepared by the kitchen - deliver to customers</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="bg-orange-500 text-white px-4 py-2 rounded-xl font-bold text-lg shadow-lg">
+                        {orders.filter(order => order.status === 'ready' || order.status === 'prepared').length}
+                      </div>
+                      <p className="text-orange-600 text-sm font-medium mt-1">Ready Orders</p>
+                    </div>
                   </div>
                 </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    {(() => {
-                      const preparedOrders = orders.filter(order => order.status === 'ready' || order.status === 'prepared')
-                      
-                      if (preparedOrders.length === 0) {
-                        return (
-                          <div className="text-center py-8">
-                            <div className="text-4xl mb-4">🍽️</div>
-                            <h4 className="text-lg font-medium text-gray-900 mb-2">No Orders Ready to Serve</h4>
-                            <p className="text-gray-600">Prepared orders will appear here when they're ready for serving.</p>
+
+                {/* Content */}
+                <div className="p-8">
+                  {(() => {
+                    const preparedOrders = orders.filter(order => order.status === 'ready' || order.status === 'prepared')
+                    
+                    if (preparedOrders.length === 0) {
+                      return (
+                        <div className="text-center py-16">
+                          <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-yellow-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <span className="text-5xl">🍽️</span>
                           </div>
-                        )
-                      }
-                      
-                      return preparedOrders.map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg">
-                          <div>
-                            <div className="flex items-center space-x-2 mb-1">
-                              <p className="font-medium text-gray-900">Table {order.tableNumber}</p>
-                              <span className="bg-orange-100 text-orange-700 text-xs font-medium px-2 py-1 rounded-full">
-                                Ready to Serve
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600">{order.items?.map(item => `${item.name} (×${item.quantity})`).join(', ') || 'No items'}</p>
-                            <p className="text-xs text-gray-500">
-                              Customer: <span className="font-medium text-gray-700">{order.customerName || 'Not specified'}</span>
-                              {order.lastUpdated && (
-                                <span className="ml-2 text-orange-600">
-                                  • Ready: {new Date(order.lastUpdated.toDate()).toLocaleTimeString()}
-                                </span>
-                              )}
+                          <h4 className="text-2xl font-bold text-gray-900 mb-3">All Caught Up!</h4>
+                          <p className="text-gray-600 text-lg mb-6">No orders ready for serving right now.</p>
+                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200 max-w-md mx-auto">
+                            <p className="text-green-800 text-sm font-medium">
+                              ✨ Ready orders will appear here when the kitchen finishes preparation
                             </p>
                           </div>
-                          <div className="text-right">
-                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getOrderStatusColor(order.status)}`}>
-                              {order.status}
-                            </span>
-                            <p className="text-sm font-semibold text-gray-900 mt-1">৳{order.totalAmount || 0}</p>
-                            <button
-                              onClick={() => {
-                                // You can add logic here to mark as served if needed
-                                console.log('Serve order:', order.id)
-                              }}
-                              className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                            >
-                              🍽️ Serve
-                            </button>
-                          </div>
                         </div>
-                      ))
-                    })()}
-                  </div>
+                      )
+                    }
+                    
+                    return (
+                      <div className="space-y-4">
+                        {preparedOrders.map((order, index) => (
+                          <div key={`${order.id}-${order.lastUpdated?.seconds || order.timestamp?.seconds || 'initial'}`} 
+                               className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in-up"
+                               style={{animationDelay: `${index * 50}ms`}}>
+                            
+                            {/* Order Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-red-50 rounded-t-2xl">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                                  <span className="text-white font-bold text-sm">#{order.id.slice(-4)}</span>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-bold text-gray-900">Order #{order.id.slice(-6)}</h3>
+                                  <p className="text-sm text-gray-600">
+                                    Table {order.tableNumber} • {order.customerName || 'Guest'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center space-x-4">
+                                {/* Order Status */}
+                                <div className="text-right">
+                                  <span className="inline-flex px-4 py-2 rounded-full text-sm font-bold shadow-sm bg-yellow-100 text-yellow-800">
+                                    🔥 Ready to Serve
+                                  </span>
+                                  <p className="text-xs text-gray-500 mt-2">
+                                    {order.lastUpdated && `Ready: ${new Date(order.lastUpdated.toDate()).toLocaleTimeString()}`}
+                                  </p>
+                                </div>
+                                
+                                {/* Order Total */}
+                                <div className="text-right">
+                                  <p className="text-2xl font-bold text-green-600">৳{order.totalAmount || 0}</p>
+                                  <p className="text-xs text-gray-500">Total Amount</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Order Details */}
+                            <div className="p-6">
+                              {/* Order Items */}
+                              <div className="mb-6">
+                                <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center">
+                                  <span className="mr-2">📋</span>
+                                  Order Items ({order.items?.length || 0})
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {order.items?.map((item, itemIndex) => (
+                                    <div key={itemIndex} className="flex justify-between items-center bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                                          <span className="text-orange-600 font-bold text-sm">×{item.quantity}</span>
+                                        </div>
+                                        <span className="font-medium text-gray-900">{item.name}</span>
+                                      </div>
+                                      <span className="text-gray-600 font-semibold">৳{item.price * item.quantity}</span>
+                                    </div>
+                                  )) || (
+                                    <div className="text-gray-500 text-sm italic col-span-2">No items listed</div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Order Timeline */}
+                              {(order.timestamp || order.lastUpdated) && (
+                                <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl border border-orange-200">
+                                  <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center">
+                                    <span className="mr-2">⏰</span>
+                                    Order Timeline
+                                  </h4>
+                                  <div className="space-y-2 text-sm">
+                                    {order.timestamp && (
+                                      <div className="flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                        <span className="text-gray-600">
+                                          Placed: {new Date(order.timestamp.toDate()).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {order.lastUpdated && (
+                                      <div className="flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                                        <span className="text-gray-600">
+                                          Ready: {new Date(order.lastUpdated.toDate()).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Action Button */}
+                              <div className="flex justify-end">
+                                <button
+                                  onClick={() => updateOrderStatus(order.id, 'served')}
+                                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-3"
+                                >
+                                  <span className="text-xl">🍽️</span>
+                                  <span>Mark as Served</span>
+                                  <span className="transform transition-transform hover:translate-x-1">→</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             </div>
@@ -807,8 +905,8 @@ function Waiter() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 max-w-7xl mx-auto">
-                    {tables.map((table) => {
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {tables.map((table, index) => {
                       // Comprehensive filtering to handle data type inconsistencies
                       const tableOrders = orders.filter(order => {
                         const orderTableNum = order.tableNumber
@@ -820,129 +918,206 @@ function Waiter() {
                                Number(orderTableNum) === Number(tableNum)
                       })
                       const activeOrders = tableOrders.filter(order => order.status !== 'served' && order.status !== 'completed' && order.status !== 'cancelled')
+                      const pendingOrders = activeOrders.filter(order => order.status === 'pending')
+                      const readyOrders = activeOrders.filter(order => order.status === 'ready' || order.status === 'prepared')
+                      
+                      // Calculate total revenue for this table (excluding cancelled orders)
+                      const totalRevenue = tableOrders
+                        .filter(order => order.status !== 'cancelled' && order.status !== 'pending')
+                        .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
                       
                       return (
                         <div
                           key={table.tableNumber || table.id}
-                          className="table-card group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100 bounce-in"
-                          style={{ minHeight: '200px' }}
+                          className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in-up overflow-hidden"
+                          style={{animationDelay: `${index * 100}ms`}}
                         >
-                          {/* Animated background gradient based on status */}
-                          <div className={`absolute inset-0 transition-all duration-500 opacity-80 ${
-                            table.status === 'available' ? 'bg-gradient-to-br from-emerald-100 via-green-50 to-teal-100' :
-                            table.status === 'occupied' ? 'bg-gradient-to-br from-red-100 via-pink-50 to-rose-100' :
-                            table.status === 'reserved' ? 'bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100' :
-                            'bg-gradient-to-br from-gray-100 via-slate-50 to-gray-100'
-                          }`}></div>
-                          
-                          {/* Order count at the top */}
-                          <div className="absolute top-2 left-2 right-2 z-20 flex justify-between">
-                            {/* Total orders count */}
-                            {tableOrders.length > 0 && (
-                              <div className="bg-blue-500 text-white rounded-lg px-3 py-1 text-sm font-bold shadow-lg">
-                                {tableOrders.length} orders
+                          {/* Table Header */}
+                          <div className={`relative p-6 ${
+                            table.status === 'available' 
+                              ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-b border-emerald-100' 
+                              : table.status === 'occupied' 
+                              ? 'bg-gradient-to-r from-red-50 to-pink-50 border-b border-red-100'
+                              : table.status === 'reserved'
+                              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100'
+                              : 'bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-100'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              {/* Left side - Table info */}
+                              <div className="flex items-center space-x-4">
+                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${
+                                  table.status === 'available' 
+                                    ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
+                                    : table.status === 'occupied' 
+                                    ? 'bg-gradient-to-br from-red-500 to-pink-600'
+                                    : table.status === 'reserved'
+                                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                                    : 'bg-gradient-to-br from-gray-500 to-slate-600'
+                                }`}>
+                                  <span className="text-white text-2xl font-bold">
+                                    {table.tableNumber}
+                                  </span>
+                                </div>
+                                <div>
+                                  <h3 className="text-2xl font-bold text-gray-900">
+                                    Table {table.tableNumber}
+                                  </h3>
+                                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                    <span className="flex items-center space-x-1">
+                                      <span>👥</span>
+                                      <span>{table.capacity || 4} seats</span>
+                                    </span>
+                                    {totalRevenue > 0 && (
+                                      <span className="flex items-center space-x-1">
+                                        <span>💰</span>
+                                        <span>৳{totalRevenue}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                            
-                            {/* Active orders count */}
-                            {activeOrders.length > 0 && (
-                              <div className="bg-red-500 text-white rounded-lg px-3 py-1 text-sm font-bold shadow-lg animate-pulse">
-                                {activeOrders.length} active
+                              
+                              {/* Right side - Status */}
+                              <div className="text-right">
+                                <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
+                                  table.status === 'available' 
+                                    ? 'bg-emerald-100 text-emerald-800' 
+                                    : table.status === 'occupied' 
+                                    ? 'bg-red-100 text-red-800'
+                                    : table.status === 'reserved'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {table.status === 'available' && (
+                                    <>
+                                      <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
+                                      Available
+                                    </>
+                                  )}
+                                  {table.status === 'occupied' && (
+                                    <>
+                                      <div className="w-2 h-2 bg-red-400 rounded-full mr-2 animate-pulse"></div>
+                                      Occupied
+                                    </>
+                                  )}
+                                  {table.status === 'reserved' && (
+                                    <>
+                                      <div className="w-2 h-2 bg-amber-400 rounded-full mr-2"></div>
+                                      Reserved
+                                    </>
+                                  )}
+                                </div>
+                                
+                                {/* Order counts */}
+                                <div className="flex space-x-2 mt-2 justify-end">
+                                  {activeOrders.length > 0 && (
+                                    <span className="bg-blue-500 text-white px-2 py-1 rounded-lg text-xs font-bold">
+                                      {activeOrders.length} active
+                                    </span>
+                                  )}
+                                  {tableOrders.length > 0 && (
+                                    <span className="bg-gray-500 text-white px-2 py-1 rounded-lg text-xs font-bold">
+                                      {tableOrders.length} total
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Table Body - Orders Info */}
+                          <div className="p-6">
+                            {activeOrders.length > 0 ? (
+                              <div className="space-y-4">
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center">
+                                  <span className="mr-2">🍽️</span>
+                                  Active Orders ({activeOrders.length})
+                                </h4>
+                                
+                                {/* Order status breakdown */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  {pendingOrders.length > 0 && (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+                                      <div className="text-yellow-600 font-bold text-lg">{pendingOrders.length}</div>
+                                      <div className="text-yellow-700 text-sm font-medium">Pending</div>
+                                    </div>
+                                  )}
+                                  {(activeOrders.length - pendingOrders.length - readyOrders.length) > 0 && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                                      <div className="text-blue-600 font-bold text-lg">
+                                        {activeOrders.length - pendingOrders.length - readyOrders.length}
+                                      </div>
+                                      <div className="text-blue-700 text-sm font-medium">In Kitchen</div>
+                                    </div>
+                                  )}
+                                  {readyOrders.length > 0 && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                                      <div className="text-green-600 font-bold text-lg animate-pulse">{readyOrders.length}</div>
+                                      <div className="text-green-700 text-sm font-medium">Ready to Serve</div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Recent customer info */}
+                                {activeOrders[0]?.customerName && (
+                                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-gray-600">👤</span>
+                                      <span className="text-gray-700 font-medium">
+                                        Current Customer: {activeOrders[0].customerName}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6">
+                                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                  <span className="text-gray-400 text-2xl">🍽️</span>
+                                </div>
+                                <h4 className="text-lg font-medium text-gray-700 mb-2">No Active Orders</h4>
+                                <p className="text-gray-500 text-sm">
+                                  {table.status === 'available' ? 'Table is ready for new customers' : 'Table has no pending orders'}
+                                </p>
+                                {tableOrders.length > 0 && (
+                                  <p className="text-gray-400 text-xs mt-2">
+                                    {tableOrders.length} completed orders (৳{totalRevenue})
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
 
-                          {/* Status indicator with pulse animation */}
-                          <div className="absolute top-4 right-4 z-20">
-                            <div className={`relative w-5 h-5 rounded-full border-3 border-white shadow-lg status-indicator ${
-                              table.status === 'available' ? 'bg-emerald-400 glow-green' :
-                              table.status === 'occupied' ? 'bg-red-400 glow-red' :
-                              table.status === 'reserved' ? 'bg-amber-400 glow-amber' :
-                              'bg-gray-400'
-                            }`}>
-                              {table.status === 'available' && (
-                                <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
-                              )}
-                              {table.status === 'occupied' && (
-                                <div className="absolute inset-0 bg-red-400 rounded-full animate-pulse opacity-75"></div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Main content area */}
-                          <div className="relative z-10 p-6 flex flex-col items-center justify-center h-full">
-                            {/* Table icon with hover animation */}
-                            <div className="text-5xl mb-4 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                              🍽️
-                            </div>
-                            
-                            {/* Table number with elegant typography */}
-                            <div className="text-center mb-4">
-                              <h3 className="text-2xl font-bold text-gray-800 mb-1">
-                                Table {table.tableNumber}
-                              </h3>
-                              
-                              {/* Capacity info */}
-                              {table.capacity && (
-                                <p className="text-sm text-gray-600 flex items-center justify-center space-x-1">
-                                  <span>👥</span>
-                                  <span>{table.capacity} seats</span>
-                                </p>
-                              )}
-                            </div>
-                            
-                            {/* Status badge with modern design */}
-                            <div className={`px-4 py-2 rounded-full text-sm font-semibold shadow-md mb-4 ${
-                              table.status === 'available' ? 'bg-emerald-500 text-white' :
-                              table.status === 'occupied' ? 'bg-red-500 text-white' :
-                              table.status === 'reserved' ? 'bg-amber-500 text-white' :
-                              'bg-gray-500 text-white'
-                            }`}>
-                              {table.status === 'available' && '✅ Available'}
-                              {table.status === 'occupied' && '🔴 Occupied'}
-                              {table.status === 'reserved' && '📋 Reserved'}
-                              {!['available', 'occupied', 'reserved'].includes(table.status) && table.status}
-                            </div>
-                            
-                            {/* Action buttons with improved design */}
-                            <div className="flex gap-2 w-full">
+                          {/* Table Footer - Action Buttons */}
+                          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                            <div className="flex space-x-3">
                               {table.status === 'available' && (
                                 <button
                                   onClick={() => updateTableStatus(table.id, 'occupied')}
-                                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                                  title="Mark as Occupied"
+                                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                                 >
-                                  🔴 Occupy
+                                  <span>🔴</span>
+                                  <span>Mark Occupied</span>
                                 </button>
                               )}
                               {table.status === 'occupied' && (
                                 <button
                                   onClick={() => updateTableStatus(table.id, 'available')}
-                                  className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                                  title="Mark as Available"
+                                  className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                                 >
-                                  ✅ Free
+                                  <span>✅</span>
+                                  <span>Mark Free</span>
                                 </button>
                               )}
-                              {table.status !== 'reserved' && (
-                                <button
-                                  onClick={() => handleTableOrdersView(table.tableNumber)}
-                                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                                  title="View Orders"
-                                >
-                                  📋 Orders
-                                </button>
-                              )}
+                              <button
+                                onClick={() => handleTableOrdersView(table.tableNumber)}
+                                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                              >
+                                <span>📋</span>
+                                <span>View All Orders</span>
+                              </button>
                             </div>
                           </div>
-                          
-                          {/* Decorative border effect */}
-                          <div className={`absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                            table.status === 'available' ? 'ring-2 ring-emerald-400' :
-                            table.status === 'occupied' ? 'ring-2 ring-red-400' :
-                            table.status === 'reserved' ? 'ring-2 ring-amber-400' :
-                            'ring-2 ring-gray-400'
-                          }`}></div>
                         </div>
                       )
                     })}
@@ -1017,217 +1192,198 @@ function Waiter() {
           {/* Users Section */}
           {activeSection === 'users' && (
             <div>
-              <div className="text-center mb-12">
-                <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4">
-                  Customer Management
-                </h1>
-                <p className="text-xl text-gray-600 mb-8">
-                  View all customers and their order summaries
-                </p>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-xl p-8">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                  <h2 className="text-2xl font-bold text-gray-900">Customer Order Summaries</h2>
-                  <div className="flex flex-col md:flex-row gap-4">
-                    {/* Customer Search */}
-                    <div className="relative">
+              {/* Control Panel */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-100">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
+                      <span className="mr-3 text-3xl">🎛️</span>
+                      Active Customer Management
+                    </h2>
+                    <p className="text-gray-600">Manage customers with active orders - search and track ongoing service</p>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                    {/* Enhanced Search */}
+                    <div className="relative flex-1 lg:w-80">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span className="text-gray-400 text-lg">🔍</span>
+                      </div>
                       <input
                         type="text"
-                        placeholder="Search customers..."
+                        placeholder="Search active customers by name..."
                         value={customerSearchQuery}
                         onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                        className="w-full md:w-64 px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
                       />
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-400">🔍</span>
-                      </div>
                       {customerSearchQuery && (
                         <button
                           onClick={() => setCustomerSearchQuery('')}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-red-500 transition-colors"
                         >
-                          ✕
+                          <span className="text-lg">✕</span>
                         </button>
                       )}
                     </div>
+                    
+                    {/* Action Buttons */}
                     <button
                       onClick={() => window.location.reload()}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2"
                     >
-                      🔄 Refresh
+                      <span className="text-lg">🔄</span>
+                      <span>Refresh Data</span>
                     </button>
                   </div>
                 </div>
                 
+                {/* Search Results Info */}
+                {customerSearchQuery && (
+                  <div className="mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-blue-600 text-xl">🎯</span>
+                      <p className="text-blue-800 font-medium">
+                        Search Results: "<strong className="text-blue-900">{customerSearchQuery}</strong>"
+                        <button 
+                          onClick={() => setCustomerSearchQuery('')}
+                          className="ml-3 text-blue-600 hover:text-blue-800 underline font-normal"
+                        >
+                          Clear & Show All
+                        </button>
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Customer Cards */}
+              <div className="mb-8">
                 {(() => {
-                  // Filter customers based on search query
+                  // Filter customers based on search query AND active orders > 0
                   const filteredCustomers = userOrderSummaries.filter(user =>
-                    user.customerName.toLowerCase().includes(customerSearchQuery.toLowerCase().trim())
+                    user.customerName.toLowerCase().includes(customerSearchQuery.toLowerCase().trim()) &&
+                    user.activeOrders > 0
                   )
                   
                   if (filteredCustomers.length === 0) {
                     return customerSearchQuery ? (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-4">🔍</div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">No customers found</h3>
-                        <p className="text-gray-600">No customers match "{customerSearchQuery}". Try a different search term.</p>
+                      <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
+                        <div className="w-24 h-24 bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                          <span className="text-4xl">🔍</span>
+                        </div>
+                        <h3 className="text-3xl font-bold text-gray-900 mb-4">No Active Customers Found</h3>
+                        <p className="text-gray-600 text-lg mb-6">No customers with active orders match "{customerSearchQuery}". Try a different search term.</p>
+                        <button
+                          onClick={() => setCustomerSearchQuery('')}
+                          className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+                        >
+                          Show All Active Customers
+                        </button>
                       </div>
                     ) : (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-4">👥</div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">No Customers Yet</h3>
-                        <p className="text-gray-600">Customer summaries will appear here when orders are placed.</p>
+                      <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
+                        <div className="w-24 h-24 bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                          <span className="text-4xl">🍽️</span>
+                        </div>
+                        <h3 className="text-3xl font-bold text-gray-900 mb-4">No Active Customers</h3>
+                        <p className="text-gray-600 text-lg">No customers currently have active orders. Customer profiles will appear here when orders are being processed.</p>
                       </div>
                     )
                   }
                   
                   return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                       {filteredCustomers.map((user, index) => (
                       <div
                         key={user.customerName + index}
-                        className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 p-6 border border-gray-100"
+                        className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden"
                       >
                         {/* Customer Header */}
-                        <div className="flex items-center mb-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4">
-                            <span className="text-white text-xl">👤</span>
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900">{user.customerName}</h3>
-                            <p className="text-sm text-gray-600">
-                              {user.lastOrderTime ? 
-                                `Last order: ${user.lastOrderTime.toLocaleDateString()}` : 
-                                'No recent orders'
-                              }
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Order Statistics */}
-                        <div className="space-y-3 mb-6">
-                          <div className="flex justify-between items-center p-3 bg-blue-50 rounded-xl">
-                            <span className="text-blue-700 font-medium">Total Orders</span>
-                            <span className="text-blue-900 font-bold text-lg">{user.totalOrders}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl">
-                            <span className="text-green-700 font-medium">Total Spent</span>
-                            <span className="text-green-900 font-bold text-lg">৳{user.totalAmount}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center p-3 bg-orange-50 rounded-xl">
-                            <span className="text-orange-700 font-medium">Active Orders</span>
-                            <span className="text-orange-900 font-bold text-lg">{user.activeOrders}</span>
+                        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 px-6 py-5 border-b border-gray-100">
+                          <div className="flex items-center space-x-4">
+                            <div className="relative">
+                              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                <span className="text-white text-2xl">👤</span>
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                                <span className="text-white text-xs">✓</span>
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-xl font-bold text-gray-900 mb-1">{user.customerName}</h3>
+                              <p className="text-sm text-gray-600 flex items-center">
+                                <span className="mr-2">📅</span>
+                                {user.lastOrderTime ? 
+                                  `Last order: ${user.lastOrderTime.toLocaleDateString()}` : 
+                                  'No recent orders'
+                                }
+                              </p>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Action Button */}
-                        <button
-                          onClick={() => handleCustomerOrdersView(user.customerName)}
-                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                        >
-                          📋 View All Orders
-                        </button>
+                        {/* Customer Stats */}
+                        <div className="p-6">
+                          <div className="grid grid-cols-2 gap-4 mb-6">
+                            {/* Total Orders */}
+                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-100">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                                  <span className="text-white text-lg">📋</span>
+                                </div>
+                                <span className="text-2xl font-bold text-blue-600">{user.totalOrders}</span>
+                              </div>
+                              <p className="text-blue-700 font-medium text-sm">Total Orders</p>
+                            </div>
+                            
+                            {/* Active Orders */}
+                            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-100">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                                  <span className="text-white text-lg">🔥</span>
+                                </div>
+                                <span className="text-2xl font-bold text-orange-600">{user.activeOrders}</span>
+                              </div>
+                              <p className="text-orange-700 font-medium text-sm">Active Orders</p>
+                            </div>
+                          </div>
+                          
+                          {/* Total Spent */}
+                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100 mb-6">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                                  <span className="text-white text-xl">💰</span>
+                                </div>
+                                <div>
+                                  <p className="text-green-700 font-medium">Total Spent</p>
+                                  <p className="text-sm text-green-600">All-time revenue</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-3xl font-bold text-green-600">৳{user.totalAmount}</p>
+                                <p className="text-xs text-green-500">
+                                  Avg: ৳{user.totalOrders > 0 ? Math.round(user.totalAmount / user.totalOrders) : 0}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <button
+                            onClick={() => handleCustomerOrdersView(user.customerName)}
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl group-hover:shadow-2xl flex items-center justify-center space-x-3"
+                          >
+                            <span className="text-xl">�</span>
+                            <span>View Order History</span>
+                            <span className="transform transition-transform group-hover:translate-x-1">→</span>
+                          </button>
+                        </div>
                       </div>
                       ))}
                     </div>
                   )
                 })()}
-              </div>
-
-              {/* Customer Statistics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-                {customerSearchQuery && (
-                  <div className="col-span-full bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p className="text-blue-800 text-center">
-                      📊 Statistics showing results for: "<strong>{customerSearchQuery}</strong>" 
-                      <button 
-                        onClick={() => setCustomerSearchQuery('')}
-                        className="ml-2 text-blue-600 hover:text-blue-800 underline"
-                      >
-                        Show all customers
-                      </button>
-                    </p>
-                  </div>
-                )}
-                
-                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 text-center border border-gray-100 transform hover:-translate-y-1">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <span className="text-3xl">👥</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    {customerSearchQuery ? 'Filtered Customers' : 'Total Customers'}
-                  </h3>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-                    {(() => {
-                      const filteredCustomers = userOrderSummaries.filter(user =>
-                        user.customerName.toLowerCase().includes(customerSearchQuery.toLowerCase().trim())
-                      )
-                      return filteredCustomers.length
-                    })()}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    {customerSearchQuery ? 'Matching search' : 'Unique customers'}
-                  </p>
-                </div>
-                
-                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 text-center border border-gray-100 transform hover:-translate-y-1">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <span className="text-3xl">💰</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    {customerSearchQuery ? 'Filtered Revenue' : 'Total Revenue'}
-                  </h3>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
-                    ৳{(() => {
-                      const filteredCustomers = userOrderSummaries.filter(user =>
-                        user.customerName.toLowerCase().includes(customerSearchQuery.toLowerCase().trim())
-                      )
-                      return filteredCustomers.reduce((sum, user) => sum + user.totalAmount, 0)
-                    })()}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    {customerSearchQuery ? 'From filtered customers' : 'All time revenue'}
-                  </p>
-                </div>
-                
-                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 text-center border border-gray-100 transform hover:-translate-y-1">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <span className="text-3xl">📊</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Avg Order Value</h3>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                    ৳{(() => {
-                      const filteredCustomers = userOrderSummaries.filter(user =>
-                        user.customerName.toLowerCase().includes(customerSearchQuery.toLowerCase().trim())
-                      )
-                      const totalAmount = filteredCustomers.reduce((sum, user) => sum + user.totalAmount, 0)
-                      const totalOrders = filteredCustomers.reduce((sum, user) => sum + user.totalOrders, 0)
-                      return totalOrders > 0 ? Math.round(totalAmount / totalOrders) : 0
-                    })()}
-                  </p>
-                  <p className="text-gray-600 text-sm">Per order average</p>
-                </div>
-                
-                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 text-center border border-gray-100 transform hover:-translate-y-1">
-                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <span className="text-3xl">🔥</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Active Orders</h3>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-2">
-                    {(() => {
-                      const filteredCustomers = userOrderSummaries.filter(user =>
-                        user.customerName.toLowerCase().includes(customerSearchQuery.toLowerCase().trim())
-                      )
-                      return filteredCustomers.reduce((sum, user) => sum + user.activeOrders, 0)
-                    })()}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    {customerSearchQuery ? 'From filtered customers' : 'Currently processing'}
-                  </p>
-                </div>
               </div>
             </div>
           )}
@@ -1237,7 +1393,27 @@ function Waiter() {
             <div>
               {(() => {
                 // Determine which orders to display based on selection
-                const displayOrders = (selectedTableNumber || selectedCustomer) ? filteredOrders : orders
+                let displayOrders = (selectedTableNumber || selectedCustomer) ? filteredOrders : orders
+                
+                // Apply status filter
+                if (orderStatusFilter !== 'all') {
+                  if (orderStatusFilter === 'pending') {
+                    displayOrders = displayOrders.filter(order => order.status === 'pending')
+                  } else if (orderStatusFilter === 'in-progress') {
+                    displayOrders = displayOrders.filter(order => 
+                      order.status === 'confirmed' || 
+                      order.status === 'preparing' || 
+                      order.status === 'ready'
+                    )
+                  } else if (orderStatusFilter === 'completed') {
+                    displayOrders = displayOrders.filter(order => 
+                      order.status === 'completed' || 
+                      order.status === 'served'
+                    )
+                  } else if (orderStatusFilter === 'cancelled') {
+                    displayOrders = displayOrders.filter(order => order.status === 'cancelled')
+                  }
+                }
                 
                 return (
                   <>
@@ -1262,6 +1438,104 @@ function Waiter() {
                             <span>View All Orders</span>
                           </button>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Status Filter Buttons */}
+                    <div className="mb-6">
+                      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                        <div className="flex flex-col space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                              <span className="mr-2">🔍</span>
+                              Filter by Status
+                            </h3>
+                            <span className="text-sm text-gray-500">
+                              {displayOrders.length} orders {orderStatusFilter !== 'all' ? `(${orderStatusFilter})` : 'total'}
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-3">
+                            <button
+                              onClick={() => setOrderStatusFilter('all')}
+                              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                                orderStatusFilter === 'all'
+                                  ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg transform scale-105'
+                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
+                              }`}
+                            >
+                              <span>📊</span>
+                              <span>All Orders</span>
+                              <span className="bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs">
+                                {(selectedTableNumber || selectedCustomer) ? filteredOrders.length : orders.length}
+                              </span>
+                            </button>
+                            
+                            <button
+                              onClick={() => setOrderStatusFilter('pending')}
+                              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                                orderStatusFilter === 'pending'
+                                  ? 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-lg transform scale-105'
+                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
+                              }`}
+                            >
+                              <span>⏳</span>
+                              <span>Pending</span>
+                              <span className="bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs">
+                                {((selectedTableNumber || selectedCustomer) ? filteredOrders : orders).filter(order => order.status === 'pending').length}
+                              </span>
+                            </button>
+                            
+                            <button
+                              onClick={() => setOrderStatusFilter('in-progress')}
+                              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                                orderStatusFilter === 'in-progress'
+                                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg transform scale-105'
+                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
+                              }`}
+                            >
+                              <span>👨‍🍳</span>
+                              <span>In Progress</span>
+                              <span className="bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs">
+                                {((selectedTableNumber || selectedCustomer) ? filteredOrders : orders).filter(order => 
+                                  order.status === 'confirmed' || order.status === 'preparing' || order.status === 'ready'
+                                ).length}
+                              </span>
+                            </button>
+                            
+                            <button
+                              onClick={() => setOrderStatusFilter('completed')}
+                              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                                orderStatusFilter === 'completed'
+                                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg transform scale-105'
+                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
+                              }`}
+                            >
+                              <span>✅</span>
+                              <span>Completed</span>
+                              <span className="bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs">
+                                {((selectedTableNumber || selectedCustomer) ? filteredOrders : orders).filter(order => 
+                                  order.status === 'completed' || order.status === 'served'
+                                ).length}
+                              </span>
+                            </button>
+                            
+                            <button
+                              onClick={() => setOrderStatusFilter('cancelled')}
+                              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                                orderStatusFilter === 'cancelled'
+                                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
+                              }`}
+                            >
+                              <span>❌</span>
+                              <span>Cancelled</span>
+                              <span className="bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs">
+                                {((selectedTableNumber || selectedCustomer) ? filteredOrders : orders).filter(order => order.status === 'cancelled').length}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -1366,203 +1640,207 @@ function Waiter() {
                         <div className="text-center py-12">
                           <div className="text-6xl mb-4">📋</div>
                           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                            {selectedTableNumber ? `No Orders for Table ${selectedTableNumber}` : 
+                            {orderStatusFilter !== 'all' ? `No ${orderStatusFilter.charAt(0).toUpperCase() + orderStatusFilter.slice(1).replace('-', ' ')} Orders` :
+                             selectedTableNumber ? `No Orders for Table ${selectedTableNumber}` : 
                              selectedCustomer ? `No Orders for ${selectedCustomer}` : 'No Orders Yet'}
                           </h3>
                           <p className="text-gray-600">
-                            {selectedTableNumber ? `This table hasn't placed any orders yet.` : 
+                            {orderStatusFilter !== 'all' ? `No orders found with status: ${orderStatusFilter.replace('-', ' ')}.` :
+                             selectedTableNumber ? `This table hasn't placed any orders yet.` : 
                              selectedCustomer ? `This customer hasn't placed any orders yet.` : 'Orders will appear here when customers place them.'}
                           </p>
+                          {orderStatusFilter !== 'all' && (
+                            <button
+                              onClick={() => setOrderStatusFilter('all')}
+                              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                            >
+                              Show All Orders
+                            </button>
+                          )}
                         </div>
                       ) : (
-                        <div className="overflow-x-auto shadow-lg rounded-lg">
-                          <table className="min-w-full divide-y divide-gray-200 table-fixed">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                                  Order ID
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                                  Table
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                                  Customer
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                                  Items
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                                  Status
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                                  Total
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                                  Time
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-72">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {displayOrders.map((order) => (
-                                <tr key={`${order.id}-${order.lastUpdated?.seconds || order.timestamp?.seconds || 'initial'}`} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    #{order.id.slice(-6)}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-900">Table {order.tableNumber}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-900">
-                                        {order.customerName || 'Guest'}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                                    <div className="truncate">
-                                      {order.items?.map(item => `${item.name} (×${item.quantity})`).join(', ') || 'No items'}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getOrderStatusColor(order.status)}`}>
-                                      {order.status || 'pending'}
+                        <div className="space-y-4">
+                          {displayOrders.map((order, index) => (
+                            <div key={`${order.id}-${order.lastUpdated?.seconds || order.timestamp?.seconds || 'initial'}`} 
+                                 className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in-up"
+                                 style={{animationDelay: `${index * 50}ms`}}>
+                              
+                              {/* Order Header */}
+                              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-gray-100 rounded-t-2xl">
+                                <div className="flex items-center space-x-4">
+                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                                    <span className="text-white font-bold text-sm">#{order.id.slice(-4)}</span>
+                                  </div>
+                                  <div>
+                                    <h3 className="text-lg font-bold text-gray-900">Order #{order.id.slice(-6)}</h3>
+                                    <p className="text-sm text-gray-600">
+                                      Table {order.tableNumber} • {order.customerName || 'Guest'}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center space-x-4">
+                                  {/* Order Status */}
+                                  <div className="text-right">
+                                    <span className={`inline-flex px-4 py-2 rounded-full text-sm font-bold shadow-sm ${getOrderStatusColor(order.status)}`}>
+                                      {order.status === 'pending' && '⏳ Pending'}
+                                      {order.status === 'confirmed' && '👨‍🍳 With Chef'}
+                                      {order.status === 'preparing' && '🔥 Preparing'}
+                                      {order.status === 'ready' && '✅ Ready'}
+                                      {order.status === 'served' && '🍽️ Served'}
+                                      {order.status === 'completed' && '✅ Completed'}
+                                      {order.status === 'cancelled' && '❌ Cancelled'}
                                     </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    <div className="flex items-center">
-                                      <span className="text-lg font-bold text-green-600">৳{order.totalAmount || 0}</span>
-                                      {order.lastUpdated && order.updatedBy && (
-                                        <div className="ml-2 flex flex-col">
-                                          <span className="text-xs text-blue-500 font-medium">
-                                            Updated
-                                          </span>
-                                          <span className="text-xs text-gray-400">
-                                            {new Date(order.lastUpdated.toDate()).toLocaleTimeString()}
-                                          </span>
+                                  </div>
+                                  
+                                  {/* Order Total */}
+                                  <div className="text-right">
+                                    <p className="text-2xl font-bold text-green-600">৳{order.totalAmount || 0}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {order.timestamp ? new Date(order.timestamp.toDate()).toLocaleDateString() : 'No date'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Order Content */}
+                              <div className="p-4">
+                                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                                  
+                                  {/* Order Items */}
+                                  <div className="lg:col-span-3">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center">
+                                      <span className="mr-2">🍽️</span>
+                                      Order Items ({order.items?.length || 0})
+                                    </h4>
+                                    <div className="bg-gray-50 rounded-lg p-3 max-h-24 overflow-y-auto">
+                                      {order.items && order.items.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {order.items.map((item, index) => (
+                                            <div key={index} className="flex items-center justify-between bg-white rounded-md p-2 text-xs">
+                                              <div className="flex-1">
+                                                <span className="font-medium text-gray-900">{item.name}</span>
+                                              </div>
+                                              <div className="flex items-center space-x-2">
+                                                <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full text-xs font-semibold">
+                                                  ×{item.quantity}
+                                                </span>
+                                                <span className="font-bold text-green-600">
+                                                  ৳{item.price * item.quantity}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-2 text-gray-500">
+                                          <p className="text-xs">No items in this order</p>
                                         </div>
                                       )}
                                     </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {order.timestamp ? new Date(order.timestamp.toDate()).toLocaleString() : 'No time'}
-                                  </td>
-                                  <td className="px-6 py-4 text-sm font-medium">
-                                    <div className="flex flex-col space-y-2 min-w-max">
-                                      {/* Primary Actions Row */}
-                                      <div className="flex flex-wrap gap-2">
-                                        {/* Pending → Confirmed (Waiter confirms order) */}
-                                        {order.status === 'pending' && (
-                                          <button
-                                            onClick={() => updateOrderStatus(order.id, 'confirmed')}
-                                            className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center gap-1"
-                                          >
-                                            <span>✅</span>
-                                            <span>Confirm</span>
-                                          </button>
-                                        )}
-                                        
-                                        {/* Confirmed/Preparing orders - Only chef can mark as ready */}
-                                        {(order.status === 'confirmed' || order.status === 'preparing') && (
-                                          <span className="bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
-                                            <span>👨‍🍳</span>
-                                            <span>With Chef</span>
-                                          </span>
-                                        )}
-                                        
-                                        {/* Ready → Served (Waiter serves the order) */}
-                                        {order.status === 'ready' && (
-                                          <button
-                                            onClick={() => updateOrderStatus(order.id, 'served')}
-                                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center gap-1"
-                                          >
-                                            <span>🍽️</span>
-                                            <span>Serve</span>
-                                          </button>
-                                        )}
-                                        
-                                        {/* Served → Completed */}
-                                        {order.status === 'served' && (
-                                          <button
-                                            onClick={() => updateOrderStatus(order.id, 'completed')}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center gap-1"
-                                          >
-                                            <span>✅</span>
-                                            <span>Complete</span>
-                                          </button>
-                                        )}
-                                        
-                                        {/* Completed orders - no actions needed */}
-                                        {order.status === 'completed' && (
-                                          <span className="bg-purple-100 text-purple-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
-                                            <span>✅</span>
-                                            <span>Finished</span>
-                                          </span>
-                                        )}
-                                        
-                                        {/* Cancelled orders - no actions needed */}
-                                        {order.status === 'cancelled' && (
-                                          <span className="bg-red-100 text-red-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
-                                            <span>❌</span>
-                                            <span>Cancelled</span>
-                                          </span>
-                                        )}
-                                      </div>
-                                      
-                                      {/* Secondary Actions Row */}
-                                      <div className="flex flex-wrap gap-2">
-                                        {/* Customer Orders button - always visible */}
-                                        <button 
-                                          onClick={() => handleCustomerOrdersView(order.customerName || 'Guest')}
-                                          className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center gap-1"
+                                  </div>
+
+                                  {/* Actions Only */}
+                                  <div className="space-y-2">
+                                    {/* Primary Actions */}
+                                    <div className="space-y-1">
+                                      {/* Pending → Confirmed */}
+                                      {order.status === 'pending' && (
+                                        <button
+                                          onClick={() => updateOrderStatus(order.id, 'confirmed')}
+                                          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 hover:shadow-lg transform hover:scale-105 flex items-center justify-center space-x-1"
                                         >
-                                          <span>👤</span>
-                                          <span>Customer</span>
+                                          <span>✅</span>
+                                          <span>Confirm</span>
                                         </button>
-                                        
-                                        {/* Edit Order button - only for pending orders, hidden when viewing table orders */}
+                                      )}
+                                      
+                                      {/* Confirmed/Preparing - With Chef */}
+                                      {(order.status === 'confirmed' || order.status === 'preparing') && (
+                                        <div className="w-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center space-x-1">
+                                          <span>👨‍🍳</span>
+                                          <span>With Chef</span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Ready → Served */}
+                                      {order.status === 'ready' && (
+                                        <button
+                                          onClick={() => updateOrderStatus(order.id, 'served')}
+                                          className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 hover:shadow-lg transform hover:scale-105 flex items-center justify-center space-x-1"
+                                        >
+                                          <span>🍽️</span>
+                                          <span>Serve</span>
+                                        </button>
+                                      )}
+                                      
+                                      {/* Served → Completed */}
+                                      {order.status === 'served' && (
+                                        <button
+                                          onClick={() => updateOrderStatus(order.id, 'completed')}
+                                          className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 hover:shadow-lg transform hover:scale-105 flex items-center justify-center space-x-1"
+                                        >
+                                          <span>✅</span>
+                                          <span>Complete</span>
+                                        </button>
+                                      )}
+                                      
+                                      {/* Status Indicators */}
+                                      {order.status === 'completed' && (
+                                        <div className="w-full bg-gradient-to-r from-purple-400 to-purple-500 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center space-x-1">
+                                          <span>✅</span>
+                                          <span>Complete</span>
+                                        </div>
+                                      )}
+                                      
+                                      {order.status === 'cancelled' && (
+                                        <div className="w-full bg-gradient-to-r from-red-400 to-red-500 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center space-x-1">
+                                          <span>❌</span>
+                                          <span>Cancelled</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Secondary Actions */}
+                                    <div className="space-y-1 pt-2 border-t border-gray-200">
+                                      {/* Customer Orders */}
+                                      <button 
+                                        onClick={() => handleCustomerOrdersView(order.customerName || 'Guest')}
+                                        className="w-full bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center justify-center space-x-1"
+                                      >
+                                        <span>👤</span>
+                                        <span>Customer</span>
+                                      </button>
+                                      
+                                      <div className="grid grid-cols-2 gap-1">
+                                        {/* Edit - Only for pending orders */}
                                         {order.status === 'pending' && !selectedTableNumber && (
                                           <button 
                                             onClick={() => openOrderEditModal(order)}
-                                            className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center gap-1"
+                                            className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center justify-center space-x-1"
                                           >
                                             <span>✏️</span>
                                             <span>Edit</span>
                                           </button>
                                         )}
                                         
-                                        {/* Cancel Order button - only for pending orders, hidden when viewing table orders */}
+                                        {/* Cancel Order */}
                                         {order.status === 'pending' && !selectedTableNumber && (
                                           <button 
                                             onClick={() => cancelOrder(order.id)}
-                                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center gap-1 hover:scale-105"
+                                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center justify-center space-x-1 hover:scale-105"
                                           >
                                             <span>❌</span>
                                             <span>Cancel</span>
                                           </button>
                                         )}
-                                        
-                                        {/* View Details button - for confirmed orders, hidden when viewing table orders */}
-                                        {order.status === 'confirmed' && !selectedTableNumber && (
-                                          <button 
-                                            onClick={() => openOrderEditModal(order)}
-                                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:shadow-md flex items-center gap-1"
-                                          >
-                                            <span>👁️</span>
-                                            <span>View Details</span>
-                                          </button>
-                                        )}
                                       </div>
                                     </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -1574,121 +1852,266 @@ function Waiter() {
 
           {/* Profile Section */}
           {activeSection === 'profile' && (
-            <div>
-              <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900">User Profile</h2>
-                <p className="text-sm text-gray-600">View and manage your account information</p>
+            <div className="max-w-4xl mx-auto space-y-6">
+              {/* Profile Header Card */}
+              <div className="bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="relative px-8 py-12 text-white">
+                  {/* Background Pattern */}
+                  <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-10"></div>
+                  
+                  <div className="relative z-10 text-center">
+                    {/* Profile Avatar */}
+                    <div className="relative inline-block mb-6">
+                      <div className="w-32 h-32 bg-white bg-opacity-20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white border-opacity-30 shadow-xl">
+                        <span className="text-6xl leading-none flex items-center justify-center w-full h-full">🧑‍💼</span>
+                      </div>
+                      <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                        <span className="text-white text-sm font-bold leading-none">✓</span>
+                      </div>
+                    </div>
+                    
+                    {/* Profile Info */}
+                    <h1 className="text-4xl font-bold mb-2 text-white drop-shadow-lg">{userFullName}</h1>
+                    <p className="text-xl text-white text-opacity-90 mb-4 font-medium">Professional Waiter - {userProfile?.shift || 'Day'} Shift</p>
+                    <div className="flex items-center justify-center space-x-4 text-white text-opacity-80">
+                      <div className="flex items-center space-x-2">
+                        <span>🏆</span>
+                        <span className="font-medium">Expert Service</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>✨</span>
+                        <span className="font-medium">{userProfile?.status === 'active' ? 'Active' : 'Pending'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
-                  <div className="flex items-center">
-                    <div className="w-16 h-16 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full flex items-center justify-center mr-4">
-                      <span className="text-white font-bold text-2xl">👤</span>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900">{userFullName}</h3>
-                      <p className="text-green-600 font-medium">{userProfile?.shift || 'Waiter'} Shift</p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Today's Performance */}
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                      <span className="mr-3 text-2xl">📊</span>
+                      Today's Performance
+                    </h3>
+                    <p className="text-gray-600 mt-1">Your service statistics for today</p>
+                  </div>
+                  
+                  <div className="p-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* Performance Cards */}
+                      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                            <span className="text-white text-xl">📋</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-blue-600">
+                              {orders.filter(order => {
+                                const today = new Date().toDateString();
+                                const orderDate = order.timestamp ? new Date(order.timestamp.toDate()).toDateString() : '';
+                                return orderDate === today && (order.placedBy?.includes(userProfile?.firstName) || order.waiterName === userFullName);
+                              }).length}
+                            </p>
+                            <p className="text-sm text-blue-700 font-medium">Orders Placed</p>
+                          </div>
+                        </div>
+                        <p className="text-gray-600 text-sm">Orders placed today</p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                            <span className="text-white text-xl">✅</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-green-600">
+                              {orders.filter(order => 
+                                (order.placedBy?.includes(userProfile?.firstName) || order.waiterName === userFullName) && 
+                                ['pending', 'confirmed', 'ready'].includes(order.status)
+                              ).length}
+                            </p>
+                            <p className="text-sm text-green-700 font-medium">Active Orders</p>
+                          </div>
+                        </div>
+                        <p className="text-gray-600 text-sm">Currently processing</p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 border border-purple-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                            <span className="text-white text-xl">🍽️</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-purple-600">
+                              {tables.filter(table => table.status === 'occupied').length}
+                            </p>
+                            <p className="text-sm text-purple-700 font-medium">Active Tables</p>
+                          </div>
+                        </div>
+                        <p className="text-gray-600 text-sm">Tables being served</p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-6 border border-orange-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+                            <span className="text-white text-xl">💰</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-orange-600">
+                              ৳{orders.filter(order => {
+                                const today = new Date().toDateString();
+                                const orderDate = order.timestamp ? new Date(order.timestamp.toDate()).toDateString() : '';
+                                return orderDate === today && 
+                                  (order.placedBy?.includes(userProfile?.firstName) || order.waiterName === userFullName) &&
+                                  ['confirmed', 'ready', 'served', 'completed'].includes(order.status);
+                              }).reduce((sum, order) => sum + (order.totalAmount || 0), 0)}
+                            </p>
+                            <p className="text-sm text-orange-700 font-medium">Today's Sales</p>
+                          </div>
+                        </div>
+                        <p className="text-gray-600 text-sm">Revenue generated</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Personal Information */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Personal Information</h4>
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">First Name</label>
-                          <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg mt-1">
-                            {userProfile?.firstName || 'Not provided'}
-                          </p>
+                {/* Quick Actions & Account */}
+                <div className="space-y-6">
+                  {/* Account Information */}
+                  <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                    <div className="bg-gradient-to-r from-gray-50 to-slate-50 px-6 py-4 border-b border-gray-100">
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                        <span className="mr-3">👤</span>
+                        Account Info
+                      </h3>
+                    </div>
+                    
+                    <div className="p-6 space-y-4">
+                      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">�</span>
                         </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Last Name</label>
-                          <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg mt-1">
-                            {userProfile?.lastName || 'Not provided'}
-                          </p>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600">Email</p>
+                          <p className="font-medium text-gray-900 truncate">{userProfile?.email || 'Not provided'}</p>
                         </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Email</label>
-                          <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg mt-1">
-                            {userProfile?.email || 'Not provided'}
-                          </p>
+                      </div>
+
+                      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">✅</span>
                         </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Phone</label>
-                          <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg mt-1">
-                            {userProfile?.phone || 'Not provided'}
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600">Status</p>
+                          <p className={`font-medium ${userProfile?.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}>
+                            {userProfile?.status === 'active' ? 'Active & Approved' : 'Pending Approval'}
                           </p>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Work Information */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Work Information</h4>
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Position</label>
-                          <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg mt-1">
-                            Waiter
-                          </p>
+                      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">🎯</span>
                         </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Shift</label>
-                          <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg mt-1 capitalize">
-                            {userProfile?.shift || 'Not assigned'}
-                          </p>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600">Department</p>
+                          <p className="font-medium text-gray-900">Customer Service</p>
                         </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Status</label>
-                          <div className="mt-1">
-                            <span className={`inline-flex px-3 py-2 rounded-full text-sm font-medium ${
-                              userProfile?.status === 'active' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {userProfile?.status === 'active' ? '✅ Approved' : '⏳ Pending'}
-                            </span>
-                          </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">⏰</span>
                         </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Employee ID</label>
-                          <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-lg mt-1">
-                            {userProfile?.employeeId || 'Not assigned'}
-                          </p>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600">Shift</p>
+                          <p className="font-medium text-gray-900 capitalize">{userProfile?.shift || 'Not assigned'} Shift</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">🆔</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600">Employee ID</p>
+                          <p className="font-medium text-gray-900">{userProfile?.employeeId || 'Not assigned'}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="mt-8 pt-6 border-t border-gray-200">
-                    <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Quick Actions */}
+                  <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                        <span className="mr-3">⚡</span>
+                        Quick Actions
+                      </h3>
+                    </div>
+                    
+                    <div className="p-6 space-y-3">
                       <button
                         onClick={() => setActiveSection('dashboard')}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
-                        <span>📊</span>
-                        <span>Back to Dashboard</span>
+                        <span className="text-xl">📊</span>
+                        <span>Dashboard</span>
                       </button>
+                      
+                      <button
+                        onClick={() => setActiveSection('orders')}
+                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-6 py-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <span className="text-xl">📋</span>
+                        <span>My Orders</span>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveSection('tables')}
+                        className="w-full bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white px-6 py-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <span className="text-xl">🍽️</span>
+                        <span>Table Management</span>
+                      </button>
+                      
                       <button
                         onClick={handleLogout}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                        className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-6 py-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
-                        <span>🚪</span>
+                        <span className="text-xl">🚪</span>
                         <span>Sign Out</span>
                       </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Achievement Banner */}
+              <div className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 rounded-2xl shadow-lg overflow-hidden">
+                <div className="px-8 py-6 text-white relative">
+                  <div className="absolute inset-0 bg-black bg-opacity-10"></div>
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <span className="text-3xl">🏆</span>
+                      </div>
+                      <div>
+                        <h4 className="text-2xl font-bold mb-1">Outstanding Service!</h4>
+                        <p className="text-white text-opacity-90">Excellent customer service and table management performance</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold">
+                        {orders.filter(order => 
+                          (order.placedBy?.includes(userProfile?.firstName) || order.waiterName === userFullName) && 
+                          order.status !== 'cancelled'
+                        ).length}
+                      </div>
+                      <div className="text-sm text-white text-opacity-80">Total Orders</div>
                     </div>
                   </div>
                 </div>
