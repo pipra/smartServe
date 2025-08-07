@@ -17,7 +17,7 @@ export default function Home() {
     const [orderStatus, setOrderStatus] = useState('select-table') // select-table, browsing, cart, ordered, confirmed, preparing, ready, served, billing, completed
     const [availableTables, setAvailableTables] = useState([])
     const [categories, setCategories] = useState(['All'])
-    const [activeTab, setActiveTab] = useState('menu') // menu, cart, status, profile
+    const [activeTab, setActiveTab] = useState('menu') // menu, cart, status, profile, tables
     const [userOrders, setUserOrders] = useState([])
     const [userProfile, setUserProfile] = useState(null) // For storing additional user profile data
     const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -25,6 +25,7 @@ export default function Home() {
     const [selectedItem, setSelectedItem] = useState(null) // For item details modal
     const [showItemDetails, setShowItemDetails] = useState(false) // Show/hide item details modal
     const [itemQuantity, setItemQuantity] = useState(1) // Quantity for selected item
+    const [orderFilter, setOrderFilter] = useState('all') // all, pending, in-progress, completed, cancelled
     const [showTableSelection, setShowTableSelection] = useState(false) // Show/hide table selection
     const [showRatingModal, setShowRatingModal] = useState(false) // Show/hide rating modal
     const [orderRating, setOrderRating] = useState(0) // Current rating selection
@@ -106,7 +107,7 @@ export default function Home() {
     // Set default tab based on user state
     useEffect(() => {
         if (user && !selectedTable) {
-            setActiveTab('menu') // Show dashboard by default
+            setActiveTab('tables') // Show tables tab by default when no table selected
         }
     }, [user, selectedTable])
 
@@ -408,6 +409,29 @@ export default function Home() {
         }
     }
 
+    const cancelOrder = async (orderId) => {
+        try {
+            // Update order status to cancelled in Firestore
+            const orderRef = doc(db, 'Orders', orderId)
+            await updateDoc(orderRef, {
+                status: 'cancelled',
+                cancelledAt: new Date(),
+                cancelledBy: user?.uid
+            })
+            
+            // If this is the current order, reset the order state
+            if (currentOrder && currentOrder.id === orderId) {
+                setCurrentOrder(null)
+                setOrderStatus('browsing')
+            }
+            
+            console.log('Order cancelled successfully:', orderId)
+        } catch (error) {
+            console.error('Error cancelling order:', error)
+            alert('Failed to cancel order. Please try again.')
+        }
+    }
+
     // Submit order rating
     const submitRating = async () => {
         if (!currentOrder || orderRating === 0) return
@@ -522,6 +546,15 @@ export default function Home() {
                             {/* Main Navigation Tabs - Always visible when user is logged in */}
                             {user && (
                                 <div className="flex items-center space-x-2 mr-4">
+                                    <button
+                                        onClick={() => setActiveTab('tables')}
+                                        className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                                            activeTab === 'tables' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
+                                        }`}
+                                    >
+                                        <span>🏠</span>
+                                        <span className="hidden md:inline">Tables</span>
+                                    </button>
                                     {selectedTable && (
                                         <>
                                             <button
@@ -598,15 +631,15 @@ export default function Home() {
                 </div>
             </nav>
 
-            {/* Table Selection Screen */}
-            {orderStatus === 'select-table' && (
+            {/* Table Selection Screen - show for all users when no table selected and not on Tables tab, Profile tab, or Status tab */}
+            {orderStatus === 'select-table' && activeTab !== 'tables' && activeTab !== 'profile' && activeTab !== 'status' && (
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
                     <div className="text-center mb-12">
                         <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4">
-                            Welcome to SmartServe
+                            {user ? `Welcome back, ${getUserDisplayName()}!` : 'Welcome to SmartServe'}
                         </h1>
                         <p className="text-xl text-gray-600 mb-8">
-                            Ready to start ordering? Select your table to begin
+                            {user ? 'Select your table to start ordering from our delicious menu' : 'Ready to start ordering? Select your table to begin'}
                         </p>
                     </div>
                     
@@ -684,15 +717,192 @@ export default function Home() {
                 </div>
             )}
 
-            {/* Welcome Dashboard - when user is logged in but no specific view selected */}
+            {/* Tables Tab - Dedicated table selection interface */}
+            {activeTab === 'tables' && (
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                    {!user ? (
+                        <div className="text-center">
+                            <div className="text-6xl mb-6">🏠</div>
+                            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4">
+                                Select Your Table
+                            </h1>
+                            <p className="text-xl text-gray-600 mb-8">
+                                Please sign in to select a table and start ordering
+                            </p>
+                            <a 
+                                href="/login" 
+                                className="bg-indigo-600 text-white px-8 py-4 rounded-xl hover:bg-indigo-700 transition-colors font-bold text-lg shadow-lg"
+                            >
+                                Sign In to Continue
+                            </a>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="text-center mb-12">
+                                <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4">
+                                    Select Your Table
+                                </h1>
+                                <p className="text-xl text-gray-600 mb-8">
+                                    {selectedTable 
+                                        ? `Currently at Table ${selectedTable}. Choose a different table if needed.`
+                                        : 'Choose your table to start ordering from our delicious menu'
+                                    }
+                                </p>
+                            </div>
+                    
+                    <div className="bg-white rounded-2xl shadow-xl p-8">
+                        {selectedTable && (
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                            <span className="text-2xl">🍽️</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-bold text-green-900">Currently at Table {selectedTable}</h3>
+                                            <p className="text-green-700">You can switch to a different table if needed</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                        <button
+                                            onClick={() => setActiveTab('menu')}
+                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                                        >
+                                            🍽️ Browse Menu
+                                        </button>
+                                        {cart.length > 0 && (
+                                            <button
+                                                onClick={() => setActiveTab('cart')}
+                                                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                                            >
+                                                🛒 View Cart ({cart.length})
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Available Tables</h2>
+                            {availableTables.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <div className="text-6xl mb-4">🏠</div>
+                                    <p className="text-gray-500 text-lg mb-4">No tables available at the moment</p>
+                                    <button
+                                        onClick={refreshTables}
+                                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                    >
+                                        🔄 Refresh Tables
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 max-w-6xl mx-auto">
+                                    {availableTables.map((table) => (
+                                        <button
+                                            key={table.tableNumber}
+                                            onClick={() => selectTable(table.tableNumber)}
+                                            className={`group relative aspect-square bg-white border-2 rounded-2xl hover:border-indigo-400 transition-all duration-300 hover:scale-105 hover:shadow-xl flex flex-col items-center justify-center text-gray-700 hover:text-indigo-600 min-h-[80px] overflow-hidden ${
+                                                selectedTable === table.tableNumber 
+                                                    ? 'border-green-500 bg-green-50' 
+                                                    : 'border-gray-200'
+                                            }`}
+                                        >
+                                            {/* Background gradient on hover or selected */}
+                                            <div className={`absolute inset-0 bg-gradient-to-br transition-opacity duration-300 rounded-2xl ${
+                                                selectedTable === table.tableNumber 
+                                                    ? 'from-green-50 to-green-100 opacity-100'
+                                                    : 'from-indigo-50 to-purple-50 opacity-0 group-hover:opacity-100'
+                                            }`}></div>
+                                            
+                                            {/* Table icon */}
+                                            <div className="relative z-10 text-2xl mb-1 group-hover:scale-110 transition-transform duration-300">
+                                                🍽️
+                                            </div>
+                                            
+                                            {/* Table number */}
+                                            <div className={`relative z-10 text-lg font-bold transition-colors duration-300 ${
+                                                selectedTable === table.tableNumber 
+                                                    ? 'text-green-700'
+                                                    : 'group-hover:text-indigo-700'
+                                            }`}>
+                                                {table.tableNumber}
+                                            </div>
+                                            
+                                            {/* Status indicator */}
+                                            <div className="absolute top-2 right-2 z-10">
+                                                <div className={`w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+                                                    selectedTable === table.tableNumber 
+                                                        ? 'bg-green-500'
+                                                        : 'bg-green-400'
+                                                }`}></div>
+                                            </div>
+                                            
+                                            {/* Selected indicator */}
+                                            {selectedTable === table.tableNumber && (
+                                                <div className="absolute top-2 left-2 z-10">
+                                                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                                        <span className="text-white text-xs">✓</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Hover effect overlay */}
+                                            <div className={`absolute inset-0 border-2 rounded-2xl transition-opacity duration-300 ${
+                                                selectedTable === table.tableNumber 
+                                                    ? 'border-green-500 opacity-100'
+                                                    : 'border-indigo-500 opacity-0 group-hover:opacity-100'
+                                            }`}></div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Quick Stats for logged users */}
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+                            <h3 className="text-xl font-bold text-indigo-900 mb-4">Your Account Summary</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-indigo-600">{userOrders.length}</p>
+                                    <p className="text-sm text-indigo-700">Total Orders</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-green-600">
+                                        ৳{userOrders.filter(order => 
+                                            order.status && 
+                                            ['confirmed', 'preparing', 'ready', 'served', 'billing', 'completed'].includes(order.status)
+                                        ).reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(2)}
+                                    </p>
+                                    <p className="text-sm text-green-700">Total Spent</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-purple-600">{cart.length}</p>
+                                    <p className="text-sm text-purple-700">Items in Cart</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-orange-600">
+                                        {userOrders.filter(order => order.status === 'completed').length}
+                                    </p>
+                                    <p className="text-sm text-orange-700">Completed</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* User Stats Dashboard - when user is logged in, on menu tab, but no table selected */}
             {user && orderStatus === 'select-table' && activeTab === 'menu' && (
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                            Welcome back, {getUserDisplayName()}!
-                        </h1>
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                            Your Account Overview
+                        </h2>
                         <p className="text-lg text-gray-600 mb-8">
-                            Check your order history or select a table to start ordering
+                            View your order history and account statistics
                         </p>
                     </div>
                     
@@ -708,9 +918,12 @@ export default function Home() {
                             <div className="text-3xl mb-2">💰</div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">Total Spent</h3>
                             <p className="text-2xl font-bold text-green-600">
-                                ৳{userOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(2)}
+                                ৳{userOrders.filter(order => 
+                                    order.status && 
+                                    ['confirmed', 'preparing', 'ready', 'served', 'billing', 'completed'].includes(order.status)
+                                ).reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(2)}
                             </p>
-                            <p className="text-gray-600 text-sm">All time spending</p>
+                            <p className="text-gray-600 text-sm">Only confirmed orders</p>
                         </div>
                         <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
                             <div className="text-3xl mb-2">⭐</div>
@@ -724,7 +937,13 @@ export default function Home() {
                     
                     <div className="bg-white rounded-2xl shadow-xl p-8">
                         <h2 className="text-2xl font-bold text-center mb-6">Quick Actions</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button
+                                onClick={() => setActiveTab('tables')}
+                                className="bg-green-600 text-white py-4 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                            >
+                                🏠 Select Table
+                            </button>
                             <button
                                 onClick={() => setActiveTab('status')}
                                 className="bg-indigo-600 text-white py-4 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
@@ -1148,6 +1367,106 @@ export default function Home() {
                             📋 Order History {selectedTable && `- Table ${selectedTable}`}
                         </h2>
                         
+                        {/* Order Filter Options */}
+                        <div className="mb-8">
+                            <div className="bg-gray-50 rounded-xl p-4">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Orders</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <button
+                                        onClick={() => setOrderFilter('pending')}
+                                        className={`px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${
+                                            orderFilter === 'pending'
+                                                ? 'bg-blue-500 text-white shadow-lg transform scale-105'
+                                                : 'bg-white text-blue-700 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-center space-x-2">
+                                            <span>📝</span>
+                                            <span>Pending Orders</span>
+                                        </div>
+                                        <div className="text-xs mt-1 opacity-80">
+                                            {(() => {
+                                                const pendingCount = userOrders.filter(order => order.status === 'pending' || order.status === 'ordered').length;
+                                                console.log('Pending orders:', userOrders.filter(order => order.status === 'pending' || order.status === 'ordered'));
+                                                console.log('All order statuses:', userOrders.map(order => order.status));
+                                                return pendingCount;
+                                            })()} orders
+                                        </div>
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => setOrderFilter('in-progress')}
+                                        className={`px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${
+                                            orderFilter === 'in-progress'
+                                                ? 'bg-orange-500 text-white shadow-lg transform scale-105'
+                                                : 'bg-white text-orange-700 border-2 border-orange-200 hover:bg-orange-50 hover:border-orange-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-center space-x-2">
+                                            <span>👨‍🍳</span>
+                                            <span>In Progress</span>
+                                        </div>
+                                        <div className="text-xs mt-1 opacity-80">
+                                            {userOrders.filter(order => 
+                                                order.status && 
+                                                ['confirmed', 'preparing', 'ready', 'served', 'billing'].includes(order.status)
+                                            ).length} orders
+                                        </div>
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => setOrderFilter('completed')}
+                                        className={`px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${
+                                            orderFilter === 'completed'
+                                                ? 'bg-green-500 text-white shadow-lg transform scale-105'
+                                                : 'bg-white text-green-700 border-2 border-green-200 hover:bg-green-50 hover:border-green-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-center space-x-2">
+                                            <span>✨</span>
+                                            <span>Completed</span>
+                                        </div>
+                                        <div className="text-xs mt-1 opacity-80">
+                                            {userOrders.filter(order => order.status === 'completed').length} orders
+                                        </div>
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => setOrderFilter('cancelled')}
+                                        className={`px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${
+                                            orderFilter === 'cancelled'
+                                                ? 'bg-red-500 text-white shadow-lg transform scale-105'
+                                                : 'bg-white text-red-700 border-2 border-red-200 hover:bg-red-50 hover:border-red-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-center space-x-2">
+                                            <span>❌</span>
+                                            <span>Cancelled</span>
+                                        </div>
+                                        <div className="text-xs mt-1 opacity-80">
+                                            {userOrders.filter(order => order.status === 'cancelled').length} orders
+                                        </div>
+                                    </button>
+                                </div>
+                                
+                                {/* <div className="mt-4 flex justify-center">
+                                    <button
+                                        onClick={() => setOrderFilter('all')}
+                                        className={`px-6 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
+                                            orderFilter === 'all'
+                                                ? 'bg-indigo-500 text-white shadow-lg'
+                                                : 'bg-white text-indigo-700 border-2 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <span>📊</span>
+                                            <span>Show All Orders ({userOrders.length})</span>
+                                        </div>
+                                    </button>
+                                </div> */}
+                            </div>
+                        </div>
+                        
                         {/* Current Order Status */}
                         {currentOrder && (
                             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 mb-8 border border-indigo-200">
@@ -1212,25 +1531,81 @@ export default function Home() {
                         
                         {/* Order History */}
                         <h3 className="text-xl font-bold text-gray-900 mb-4">
-                            {selectedTable ? 'Previous Orders' : 'All Your Orders'}
+                            {(() => {
+                                const filteredOrdersCount = (() => {
+                                    if (orderFilter === 'all') return userOrders.length
+                                    if (orderFilter === 'pending') return userOrders.filter(order => order.status === 'pending' || order.status === 'ordered').length
+                                    if (orderFilter === 'in-progress') return userOrders.filter(order => 
+                                        order.status && 
+                                        ['confirmed', 'preparing', 'ready', 'served', 'billing'].includes(order.status)
+                                    ).length
+                                    if (orderFilter === 'completed') return userOrders.filter(order => order.status === 'completed').length
+                                    if (orderFilter === 'cancelled') return userOrders.filter(order => order.status === 'cancelled').length
+                                    return 0
+                                })()
+                                
+                                const getFilterTitle = () => {
+                                    switch(orderFilter) {
+                                        case 'pending': return 'Pending Orders'
+                                        case 'in-progress': return 'In Progress Orders'
+                                        case 'completed': return 'Completed Orders'
+                                        case 'cancelled': return 'Cancelled Orders'
+                                        default: return selectedTable ? 'Previous Orders' : 'All Your Orders'
+                                    }
+                                }
+                                
+                                return `${getFilterTitle()} (${filteredOrdersCount})`
+                            })()}
                         </h3>
-                        {userOrders.length === 0 ? (
-                            <div className="text-center py-8">
-                                <div className="text-6xl mb-4">📋</div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">No order history</h3>
-                                <p className="text-gray-600 mb-6">Your orders will appear here</p>
-                                {!selectedTable && (
-                                    <button
-                                        onClick={() => setOrderStatus('select-table')}
-                                        className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-                                    >
-                                        Select Table to Start Ordering
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {userOrders.map((order) => (
+                        {(() => {
+                            // Filter orders based on selected filter
+                            const getFilteredOrders = () => {
+                                console.log('Current filter:', orderFilter);
+                                console.log('All orders:', userOrders);
+                                console.log('Order statuses:', userOrders.map(order => ({ id: order.id, status: order.status })));
+                                
+                                if (orderFilter === 'all') return userOrders
+                                if (orderFilter === 'pending') {
+                                    const pending = userOrders.filter(order => order.status === 'pending' || order.status === 'ordered')
+                                    console.log('Filtered pending orders:', pending);
+                                    return pending;
+                                }
+                                if (orderFilter === 'in-progress') return userOrders.filter(order => 
+                                    order.status && 
+                                    ['confirmed', 'preparing', 'ready', 'served', 'billing'].includes(order.status)
+                                )
+                                if (orderFilter === 'completed') return userOrders.filter(order => order.status === 'completed')
+                                if (orderFilter === 'cancelled') return userOrders.filter(order => order.status === 'cancelled')
+                                return []
+                            }
+                            
+                            const filteredOrders = getFilteredOrders()
+                            
+                            if (filteredOrders.length === 0) {
+                                const getEmptyMessage = () => {
+                                    switch(orderFilter) {
+                                        case 'pending': return { icon: '📝', title: 'No pending orders', desc: 'You have no pending orders at the moment' }
+                                        case 'in-progress': return { icon: '👨‍🍳', title: 'No orders in progress', desc: 'You have no orders currently being prepared' }
+                                        case 'completed': return { icon: '✨', title: 'No completed orders', desc: 'You have no completed orders yet' }
+                                        case 'cancelled': return { icon: '❌', title: 'No cancelled orders', desc: 'You have no cancelled orders' }
+                                        default: return { icon: '📋', title: 'No order history', desc: 'Your orders will appear here' }
+                                    }
+                                }
+                                
+                                const emptyMsg = getEmptyMessage()
+                                
+                                return (
+                                    <div className="text-center py-8">
+                                        <div className="text-6xl mb-4">{emptyMsg.icon}</div>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-2">{emptyMsg.title}</h3>
+                                        <p className="text-gray-600 mb-6">{emptyMsg.desc}</p>
+                                    </div>
+                                )
+                            }
+                            
+                            return (
+                                <div className="space-y-4">
+                                    {filteredOrders.map((order) => (
                                     <div key={order.id} className="bg-gray-50 rounded-xl p-6 border-l-4 border-indigo-500">
                                         <div className="flex justify-between items-start mb-4">
                                             <div>
@@ -1250,16 +1625,20 @@ export default function Home() {
                                                     order.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                                                     order.status === 'billing' ? 'bg-yellow-100 text-yellow-800' :
                                                     order.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
+                                                    order.status === 'pending' ? 'bg-blue-100 text-blue-800' :
+                                                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                                     'bg-gray-100 text-gray-800'
                                                 }`}>
                                                     {order.status === 'ordered' && '📝 Ordered'}
+                                                    {order.status === 'pending' && '📝 Pending'}
                                                     {order.status === 'confirmed' && '✅ Confirmed'}
                                                     {order.status === 'preparing' && '👨‍🍳 Preparing'}
                                                     {order.status === 'ready' && '🔔 Ready'}
                                                     {order.status === 'served' && '🍽️ Served'}
                                                     {order.status === 'billing' && '💳 Billing'}
                                                     {order.status === 'completed' && '✨ Completed'}
-                                                    {!['ordered', 'confirmed', 'preparing', 'ready', 'served', 'billing', 'completed'].includes(order.status) && order.status}
+                                                    {order.status === 'cancelled' && '❌ Cancelled'}
+                                                    {!['ordered', 'pending', 'confirmed', 'preparing', 'ready', 'served', 'billing', 'completed', 'cancelled'].includes(order.status) && order.status}
                                                 </span>
                                             </div>
                                         </div>
@@ -1275,6 +1654,7 @@ export default function Home() {
                                                      order.status === 'ready' ? '60%' :
                                                      order.status === 'preparing' ? '45%' :
                                                      order.status === 'confirmed' ? '30%' :
+                                                     order.status === 'cancelled' ? '0%' :
                                                      '15%'} Complete
                                                 </span>
                                             </div>
@@ -1287,6 +1667,7 @@ export default function Home() {
                                                         order.status === 'ready' ? 'bg-purple-500 w-4/6' :
                                                         order.status === 'preparing' ? 'bg-orange-500 w-3/6' :
                                                         order.status === 'confirmed' ? 'bg-green-500 w-2/6' :
+                                                        order.status === 'cancelled' ? 'bg-red-500 w-0' :
                                                         'bg-blue-400 w-1/6'
                                                     }`}
                                                 ></div>
@@ -1364,7 +1745,7 @@ export default function Home() {
                                             </div>
                                         </div>
                                         
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
                                             {order.items?.map((item, index) => (
                                                 <div key={index} className="text-sm bg-white rounded p-2">
                                                     <span className="font-medium">{item.name}</span>
@@ -1372,201 +1753,361 @@ export default function Home() {
                                                 </div>
                                             ))}
                                         </div>
+                                        
+                                        {/* Cancel Order Button - Only show for pending/ordered status */}
+                                        {(order.status === 'pending' || order.status === 'ordered') && (
+                                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                                                        <span className="text-sm text-blue-600 font-medium">
+                                                            Waiting for waiter confirmation
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+                                                                cancelOrder(order.id)
+                                                            }
+                                                        }}
+                                                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium flex items-center space-x-2 shadow-md hover:shadow-lg"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                        <span>Cancel Order</span>
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    You can cancel this order until it's confirmed by the waiter
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        )})()}
                     </div>
                 </div>
             )}
 
             {/* Profile View */}
             {activeTab === 'profile' && user && (
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="bg-white rounded-2xl shadow-xl p-8">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
-                            👤 User Profile
-                        </h2>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* User Information */}
-                            <div className="space-y-6">
-                                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
-                                                <span className="text-white font-bold text-lg">👤</span>
+                <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8">
+                    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                        {/* Profile Header Card */}
+                        <div className="relative bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
+                            {/* Background Pattern */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600"></div>
+                            <div className="absolute inset-0 opacity-10">
+                                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    <defs>
+                                        <pattern id="profilePattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                                            <circle cx="10" cy="10" r="2" fill="white" opacity="0.3"/>
+                                        </pattern>
+                                    </defs>
+                                    <rect width="100" height="100" fill="url(#profilePattern)"/>
+                                </svg>
+                            </div>
+                            
+                            {/* Header Content */}
+                            <div className="relative px-8 py-12 text-center">
+                                <div className="relative inline-block mb-6">
+                                    <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center mx-auto shadow-2xl border-4 border-white">
+                                        <span className="text-indigo-600 text-5xl">👤</span>
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">
+                                    {userProfile?.firstName && userProfile?.lastName 
+                                        ? `${userProfile.firstName} ${userProfile.lastName}`
+                                        : getUserDisplayName()
+                                    }
+                                </h1>
+                                <p className="text-xl text-blue-100 mb-2">{user.email}</p>
+                                <div className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                                    Active Member
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Personal Information - Takes 2/3 width */}
+                            <div className="lg:col-span-2">
+                                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                                    {/* Section Header */}
+                                    <div className="bg-gradient-to-r from-slate-50 to-gray-50 px-6 py-4 border-b border-gray-100">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                                                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                                    </svg>
+                                                </div>
+                                                <h2 className="text-xl font-bold text-gray-900">Personal Information</h2>
                                             </div>
-                                            <h3 className="text-xl font-bold text-indigo-900">Account Information</h3>
+                                            <button
+                                                onClick={() => {
+                                                    setIsEditingProfile(!isEditingProfile)
+                                                    if (!isEditingProfile) {
+                                                        setEditProfileData({
+                                                            firstName: userProfile?.firstName || '',
+                                                            lastName: userProfile?.lastName || ''
+                                                        })
+                                                    }
+                                                }}
+                                                className={`inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                                    isEditingProfile 
+                                                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
+                                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg'
+                                                }`}
+                                            >
+                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    {isEditingProfile ? (
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    ) : (
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                    )}
+                                                </svg>
+                                                {isEditingProfile ? 'Cancel' : 'Edit Profile'}
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                setIsEditingProfile(!isEditingProfile)
-                                                if (!isEditingProfile) {
-                                                    setEditProfileData({
-                                                        firstName: userProfile?.firstName || '',
-                                                        lastName: userProfile?.lastName || ''
-                                                    })
-                                                }
-                                            }}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                                isEditingProfile 
-                                                    ? 'bg-gray-500 text-white hover:bg-gray-600' 
-                                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                            }`}
-                                        >
-                                            {isEditingProfile ? '✕ Cancel' : '✏️ Edit Profile'}
-                                        </button>
                                     </div>
                                     
-                                    {isEditingProfile ? (
-                                        <div className="bg-white rounded-lg p-6 border border-indigo-300">
-                                            <h4 className="text-lg font-semibold text-gray-800 mb-4">Edit Your Profile</h4>
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                            First Name <span className="text-red-500">*</span>
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Enter your first name"
-                                                            value={editProfileData.firstName}
-                                                            onChange={(e) => setEditProfileData({...editProfileData, firstName: e.target.value})}
-                                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                                        />
+                                    {/* Content */}
+                                    <div className="p-6">
+                                        {isEditingProfile ? (
+                                            <div className="space-y-6">
+                                                <div className="text-center pb-6 border-b border-gray-100">
+                                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Update Your Information</h3>
+                                                    <p className="text-gray-600">Keep your profile information current and accurate</p>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-semibold text-gray-700">First Name</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Enter your first name"
+                                                                value={editProfileData.firstName}
+                                                                onChange={(e) => setEditProfileData({...editProfileData, firstName: e.target.value})}
+                                                                className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all duration-200"
+                                                            />
+                                                            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                                                </svg>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                            Last Name <span className="text-red-500">*</span>
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Enter your last name"
-                                                            value={editProfileData.lastName}
-                                                            onChange={(e) => setEditProfileData({...editProfileData, lastName: e.target.value})}
-                                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                                        />
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-semibold text-gray-700">Last Name</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Enter your last name"
+                                                                value={editProfileData.lastName}
+                                                                onChange={(e) => setEditProfileData({...editProfileData, lastName: e.target.value})}
+                                                                className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all duration-200"
+                                                            />
+                                                            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                                                </svg>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex justify-end space-x-3 pt-4">
+                                                
+                                                <div className="flex justify-end space-x-4 pt-6 border-t border-gray-100">
                                                     <button
                                                         onClick={() => {
                                                             setIsEditingProfile(false)
                                                             setEditProfileData({ firstName: '', lastName: '' })
                                                         }}
-                                                        className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                                        className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium"
                                                     >
-                                                        Cancel
+                                                        Cancel Changes
                                                     </button>
                                                     <button
                                                         onClick={saveProfile}
                                                         disabled={!editProfileData.firstName.trim() || !editProfileData.lastName.trim()}
-                                                        className={`px-6 py-2 rounded-lg transition-colors ${
+                                                        className={`px-8 py-3 rounded-xl transition-all duration-200 font-medium flex items-center space-x-2 ${
                                                             editProfileData.firstName.trim() && editProfileData.lastName.trim()
-                                                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
                                                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                                         }`}
                                                     >
-                                                        💾 Save Changes
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                                                        </svg>
+                                                        <span>Save Changes</span>
                                                     </button>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <div className="bg-white rounded-lg p-4 border border-indigo-200">
-                                                <label className="text-sm font-medium text-gray-600">Full Name</label>
-                                                <div className="mt-1">
-                                                    <p className="text-lg font-semibold text-gray-800">
-                                                        {userProfile?.firstName && userProfile?.lastName 
-                                                            ? `${userProfile.firstName} ${userProfile.lastName}`
-                                                            : getUserDisplayName()
-                                                        }
-                                                    </p>
-                                                    {/* {userProfile?.firstName && userProfile?.lastName && (
-                                                        <div className="mt-1 text-sm text-gray-500">
-                                                            <span>First: {userProfile.firstName}</span>
-                                                            <span className="mx-2">•</span>
-                                                            <span>Last: {userProfile.lastName}</span>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 hover:border-blue-200 transition-all duration-200">
+                                                    <div className="flex items-center mb-3">
+                                                        <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                                            </svg>
                                                         </div>
-                                                    )} */}
+                                                        <div>
+                                                            <label className="text-sm font-semibold text-blue-700">Full Name</label>
+                                                            <p className="text-lg font-bold text-gray-900 mt-1">
+                                                                {userProfile?.firstName && userProfile?.lastName 
+                                                                    ? `${userProfile.firstName} ${userProfile.lastName}`
+                                                                    : getUserDisplayName()
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="group p-6 bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl border border-emerald-100 hover:border-emerald-200 transition-all duration-200">
+                                                    <div className="flex items-center mb-3">
+                                                        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+                                                            </svg>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-sm font-semibold text-emerald-700">Email Address</label>
+                                                            <p className="text-lg font-bold text-gray-900 mt-1 break-words">{user.email}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="group p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 hover:border-purple-200 transition-all duration-200">
+                                                    <div className="flex items-center mb-3">
+                                                        <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                                                            </svg>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-sm font-semibold text-purple-700">Username</label>
+                                                            <p className="text-lg font-bold text-gray-900 mt-1">{user.email?.split('@')[0] || 'User'}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="group p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl border border-orange-100 hover:border-orange-200 transition-all duration-200">
+                                                    <div className="flex items-center mb-3">
+                                                        <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                                            </svg>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-sm font-semibold text-orange-700">Account Status</label>
+                                                            <p className="text-lg font-bold text-green-600 mt-1 flex items-center">
+                                                                <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                                                Active
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="bg-white rounded-lg p-4 border border-indigo-200">
-                                                <label className="text-sm font-medium text-gray-600">Email</label>
-                                                <p className="text-lg font-semibold text-gray-800 mt-1">{user.email}</p>
-                                            </div>
-                                            <div className="bg-white rounded-lg p-4 border border-indigo-200">
-                                                <label className="text-sm font-medium text-gray-600">Username</label>
-                                                <p className="text-lg font-semibold text-gray-800 mt-1">{user.email?.split('@')[0] || 'User'}</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Current Session Card */}
+                                {selectedTable && (
+                                    <div className="mt-8 bg-white rounded-2xl shadow-lg overflow-hidden">
+                                        <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
+                                                    </svg>
+                                                </div>
+                                                <h2 className="text-xl font-bold text-white">Current Dining Session</h2>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-                                
-                                {selectedTable && (
-                                    <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                                        <h3 className="text-xl font-bold text-green-900 mb-4">Current Session</h3>
-                                        <div className="space-y-2">
-                                            <p><span className="font-medium">Table:</span> {selectedTable}</p>
-                                            <p><span className="font-medium">Items in Cart:</span> {cart.length}</p>
-                                            <p><span className="font-medium">Cart Total:</span> ৳{calculateTotal().toFixed(2)}</p>
+                                        <div className="p-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                                                    <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                        <span className="text-white text-2xl font-bold">#{selectedTable}</span>
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-green-700 mb-1">Table Number</p>
+                                                    <p className="text-2xl font-bold text-green-600">{selectedTable}</p>
+                                                </div>
+                                                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                                                    <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 13v4a2 2 0 01-2 2H9a2 2 0 01-2-2v-4m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01"/>
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-blue-700 mb-1">Items in Cart</p>
+                                                    <p className="text-2xl font-bold text-blue-600">{cart.length}</p>
+                                                </div>
+                                                <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
+                                                    <div className="w-16 h-16 bg-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-purple-700 mb-1">Cart Total</p>
+                                                    <p className="text-2xl font-bold text-purple-600">৳{calculateTotal().toFixed(2)}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
                             
-                            {/* Order Statistics */}
-                            <div className="space-y-6">
-                                <div className="bg-yellow-50 rounded-xl p-6 border border-yellow-200">
-                                    <h3 className="text-xl font-bold text-yellow-900 mb-4">Order Statistics</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-yellow-800">{userOrders.length}</p>
-                                            <p className="text-sm text-yellow-700">Total Orders</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-yellow-800">
-                                                ৳{userOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(2)}
-                                            </p>
-                                            <p className="text-sm text-yellow-700">Total Spent</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-yellow-800">
-                                                {userOrders.filter(order => order.status === 'completed').length}
-                                            </p>
-                                            <p className="text-sm text-yellow-700">Completed</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-yellow-800">
-                                                ৳{userOrders.length > 0 ? (userOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0) / userOrders.length).toFixed(2) : '0.00'}
-                                            </p>
-                                            <p className="text-sm text-yellow-700">Avg Order</p>
+                            {/* Sidebar - Takes 1/3 width */}
+                            <div className="lg:col-span-1 space-y-6">
+                                {/* Quick Actions */}
+                                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                                </svg>
+                                            </div>
+                                            <h2 className="text-lg font-bold text-white">Quick Actions</h2>
                                         </div>
                                     </div>
-                                </div>
-                                
-                                <div className="bg-red-50 rounded-xl p-6 border border-red-200">
-                                    <h3 className="text-xl font-bold text-red-900 mb-4">Account Actions</h3>
-                                    <div className="space-y-3">
+                                    <div className="p-6 space-y-3">
                                         <button
                                             onClick={() => setActiveTab('menu')}
-                                            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 px-4 rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
                                         >
-                                            Browse Menu
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                            </svg>
+                                            <span>Browse Menu</span>
                                         </button>
                                         <button
                                             onClick={() => setActiveTab('status')}
-                                            className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                                            className="w-full bg-gradient-to-r from-emerald-500 to-green-500 text-white py-3 px-4 rounded-xl hover:from-emerald-600 hover:to-green-600 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
                                         >
-                                            View Orders
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                            </svg>
+                                            <span>View Orders</span>
                                         </button>
                                         <button
                                             onClick={handleLogout}
-                                            className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
+                                            className="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-3 px-4 rounded-xl hover:from-red-600 hover:to-pink-600 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
                                         >
-                                            Sign Out
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                            </svg>
+                                            <span>Sign Out</span>
                                         </button>
                                     </div>
                                 </div>
