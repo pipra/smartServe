@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { db } from '../authentication/firebase'
+import { db } from '../../services/firebase/config.js'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 
 export default function CustomerMenu() {
@@ -72,7 +72,7 @@ export default function CustomerMenu() {
   }
 
   const getTotalPrice = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2)
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(0)
   }
 
   const getTotalItems = () => {
@@ -306,7 +306,7 @@ export default function CustomerMenu() {
               <div key={item.id} className="flex justify-between items-center text-sm">
                 <span className="flex-1 truncate">{item.name}</span>
                 <span className="mx-2">x{item.quantity}</span>
-                <span className="font-semibold">${(item.price * item.quantity).toFixed(2)}</span>
+                <span className="font-semibold">${(item.price * item.quantity).toFixed(0)}</span>
               </div>
             ))}
           </div>

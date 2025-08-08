@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { db } from '../authentication/firebase'
+import { db } from '../services/firebase/config.js'
 import { collection, addDoc } from 'firebase/firestore'
 import { sampleMenuItems } from '../data/sampleMenuData'
 

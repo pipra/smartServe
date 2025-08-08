@@ -1,23 +1,22 @@
-import './App.css'
+import './assets/styles/App.css'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import Login from './authentication/login'
-import SignUp from './authentication/signup'
-import Home from './authentication/home'
-import CashierSignUp from './authentication/cashierSignUp'
-import WaiterSignUp from './authentication/waiterSignUp'
-import ChefSignUp from './authentication/chefSignUp'
-import AdminSignUp from './authentication/adminSignUp'
-import Admin from './dashboard/admin'
-import Waiter from './dashboard/waiter'
-import Chef from './dashboard/chef'
-import Cashier from './dashboard/cashier'
-import CustomerMenu from './components/CustomerMenu'
+import { 
+  Login, 
+  SignUp, 
+  Home, 
+  CashierSignUp, 
+  WaiterSignUp, 
+  ChefSignUp, 
+  AdminSignUp 
+} from './pages/auth'
+import { Admin, Waiter, Chef, Cashier } from './pages/dashboard'
+import CustomerMenu from './pages/public/CustomerMenu'
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path='/' element={<Login />} />
+        <Route path='/' element={<Home />} />
         <Route path='/login' element={<Login />} />
         <Route path='/signup' element={<SignUp />} />
         <Route path='/home' element={<Home />} />

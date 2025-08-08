@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { auth, db } from '../authentication/firebase'
+import { auth, db } from '../../services/firebase/config.js'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc, collection, onSnapshot, updateDoc } from 'firebase/firestore'
 
@@ -227,7 +227,7 @@ export default function ChefDashboard() {
       // Set logout flag to prevent auto-redirect
       sessionStorage.setItem('justLoggedOut', 'true')
       await signOut(auth)
-      window.location.href = '/login'
+      window.location.href = '/'
     } catch (error) {
       console.error('Error signing out:', error)
     }
@@ -446,7 +446,7 @@ export default function ChefDashboard() {
                                     </span>
                                     {item.price && (
                                       <span className="text-sm text-gray-600">
-                                        ৳{(item.price * item.quantity).toFixed(2)}
+                                        ৳{Math.round(item.price * item.quantity)}
                                       </span>
                                     )}
                                   </div>
@@ -459,7 +459,7 @@ export default function ChefDashboard() {
                                 <div className="flex justify-between items-center">
                                   <span className="text-lg font-bold text-gray-900">Total Amount:</span>
                                   <span className="text-xl font-bold text-orange-600">
-                                    ৳{order.totalAmount.toFixed(2)}
+                                    ৳{Math.round(order.totalAmount)}
                                   </span>
                                 </div>
                               </div>

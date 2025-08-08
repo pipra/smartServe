@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { auth, db } from './firebase'
+import { auth, db } from '../../services/firebase/config.js'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { collection, addDoc, onSnapshot, query, where, doc, updateDoc, getDoc } from 'firebase/firestore'
 
@@ -49,25 +49,10 @@ export default function Home() {
     // Helper function to calculate/enhance menu item ratings
     const enhanceMenuItemsWithRatings = (items) => {
         return items.map(item => {
-            // If item doesn't have a rating, generate one based on factors
-            if (!item.rating) {
-                let calculatedRating = 3.5; // Base rating
-                
-                // Boost rating for vegetarian items
-                if (item.isVegetarian) calculatedRating += 0.3;
-                
-                // Boost rating for items with images
-                if (item.image) calculatedRating += 0.2;
-                
-                // Add some randomness but keep it realistic
-                const randomFactor = (Math.random() - 0.5) * 1.0;
-                calculatedRating += randomFactor;
-                
-                // Ensure rating is between 1.0 and 5.0
-                calculatedRating = Math.max(1.0, Math.min(5.0, calculatedRating));
-                
-                item.rating = calculatedRating;
-                item.reviewCount = Math.floor(Math.random() * 50) + 5; // 5-55 reviews
+            // If item doesn't have a rating, set it to 0
+            if (!item.rating || item.rating === 0) {
+                item.rating = 0;
+                item.reviewCount = 0; // No reviews if rating is 0
             }
             
             return item;
@@ -107,7 +92,11 @@ export default function Home() {
     // Set default tab based on user state
     useEffect(() => {
         if (user && !selectedTable) {
-            setActiveTab('tables') // Show tables tab by default when no table selected
+            setActiveTab('tables') // Show tables tab by default when no table selected for logged-in users
+            setOrderStatus('select-table')
+        } else if (!user) {
+            setActiveTab('menu') // Show menu directly for non-logged-in users
+            setOrderStatus('browsing') // Skip table selection for non-logged-in users
         }
     }, [user, selectedTable])
 
@@ -196,10 +185,16 @@ export default function Home() {
                 id: doc.id,
                 ...doc.data()
             }))
+            console.log('🔥 Firebase menu items fetched:', items.length, 'items')
+            console.log('🔥 First item:', items[0])
+            
             // Only show visible items (keep unavailable items visible but disable cart actions)
             const visibleItems = items.filter(item => item.isVisible !== false)
+            console.log('🔥 Visible items:', visibleItems.length, 'items')
+            
             // Enhance items with ratings
             const enhancedItems = enhanceMenuItemsWithRatings(visibleItems)
+            console.log('🔥 Enhanced items set to state:', enhancedItems.length, 'items')
             setMenuItems(enhancedItems)
         })
         
@@ -485,6 +480,11 @@ export default function Home() {
                              item.description.toLowerCase().includes(searchTerm.toLowerCase())
         return matchesCategory && matchesSearch
     })
+    
+    console.log('🎯 Menu items in state:', menuItems.length)
+    console.log('🎯 Filtered items to display:', filteredItems.length)
+    console.log('🎯 Selected category:', selectedCategory)
+    console.log('🎯 Search term:', searchTerm)
 
     // Show redirecting screen for staff users
     if (isRedirecting) {
@@ -512,24 +512,35 @@ export default function Home() {
                     <div className="flex justify-between h-16">
                         <div className="flex items-center">
                             <div className="flex-shrink-0 flex items-center">
-                                <button 
-                                    onClick={() => {
-                                        setSelectedTable(null)
-                                        setOrderStatus('select-table')
-                                        setActiveTab('menu')
-                                        setCart([])
-                                        setCurrentOrder(null)
-                                        setShowTableSelection(false)
-                                    }}
-                                    className="flex items-center hover:opacity-80 transition-opacity cursor-pointer"
-                                >
-                                    <div className="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-3">
-                                        <span className="text-white font-bold text-xl">🍽️</span>
+                                {user ? (
+                                    <button 
+                                        onClick={() => {
+                                            setSelectedTable(null)
+                                            setOrderStatus('select-table')
+                                            setActiveTab('menu')
+                                            setCart([])
+                                            setCurrentOrder(null)
+                                            setShowTableSelection(false)
+                                        }}
+                                        className="flex items-center hover:opacity-80 transition-opacity cursor-pointer"
+                                    >
+                                        <div className="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-3">
+                                            <span className="text-white font-bold text-xl">🍽️</span>
+                                        </div>
+                                        <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                            SmartServe
+                                        </span>
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center">
+                                        <div className="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-3">
+                                            <span className="text-white font-bold text-xl">🍽️</span>
+                                        </div>
+                                        <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                            SmartServe
+                                        </span>
                                     </div>
-                                    <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                                        SmartServe
-                                    </span>
-                                </button>
+                                )}
                                 {selectedTable && (
                                     <div className="ml-4 flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-xl shadow-lg">
                                         <span className="text-lg mr-2">🍽️</span>
@@ -631,8 +642,8 @@ export default function Home() {
                 </div>
             </nav>
 
-            {/* Table Selection Screen - show for all users when no table selected and not on Tables tab, Profile tab, or Status tab */}
-            {orderStatus === 'select-table' && activeTab !== 'tables' && activeTab !== 'profile' && activeTab !== 'status' && (
+            {/* Table Selection Screen - show only for logged-in users when no table selected and not on Tables tab, Profile tab, or Status tab */}
+            {user && orderStatus === 'select-table' && activeTab !== 'tables' && activeTab !== 'profile' && activeTab !== 'status' && (
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
                     <div className="text-center mb-12">
                         <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4">
@@ -872,7 +883,7 @@ export default function Home() {
                                         ৳{userOrders.filter(order => 
                                             order.status && 
                                             ['confirmed', 'preparing', 'ready', 'served', 'billing', 'completed'].includes(order.status)
-                                        ).reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(2)}
+                                        ).reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(0)}
                                     </p>
                                     <p className="text-sm text-green-700">Total Spent</p>
                                 </div>
@@ -921,7 +932,7 @@ export default function Home() {
                                 ৳{userOrders.filter(order => 
                                     order.status && 
                                     ['confirmed', 'preparing', 'ready', 'served', 'billing', 'completed'].includes(order.status)
-                                ).reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(2)}
+                                ).reduce((sum, order) => sum + (order.totalAmount || 0), 0).toFixed(0)}
                             </p>
                             <p className="text-gray-600 text-sm">Only confirmed orders</p>
                         </div>
@@ -1170,19 +1181,17 @@ export default function Home() {
                                         {/* Price badge - Always visible */}
                                         <div className="absolute top-3 right-3 z-20">
                                             <span className="bg-white/95 backdrop-blur-sm text-indigo-600 px-3 py-1 rounded-full text-sm font-bold shadow-lg border border-white/20">
-                                                ৳{item.price?.toFixed(2) || '0.00'}
+                                                ৳{item.price?.toFixed(0) || '0.00'}
                                             </span>
                                         </div>
                                         
                                         {/* Rating badge - Always visible */}
-                                        {item.rating && (
-                                            <div className="absolute top-3 left-3 z-20">
-                                                <div className="bg-white/95 backdrop-blur-sm text-yellow-600 px-2 py-1 rounded-full text-xs font-semibold shadow-lg border border-white/20 flex items-center">
-                                                    <span className="text-yellow-400 text-sm">⭐</span>
-                                                    <span className="ml-1">{Number(item.rating).toFixed(1)}</span>
-                                                </div>
+                                        <div className="absolute top-3 left-3 z-20">
+                                            <div className="bg-white/95 backdrop-blur-sm text-yellow-600 px-2 py-1 rounded-full text-xs font-semibold shadow-lg border border-white/20 flex items-center">
+                                                <span className="text-yellow-400 text-sm">⭐</span>
+                                                <span className="ml-1">{Number(item.rating || 0).toFixed(1)}</span>
                                             </div>
-                                        )}
+                                        </div>
                                         
                                         {/* Content overlay at bottom */}
                                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 text-white z-20">
@@ -1215,9 +1224,14 @@ export default function Home() {
                                                 </div>
                                             </div>
                                             
-                                            {/* Action button - Single Add to Cart button */}
+                                            {/* Action button - Add to Cart or View Only */}
                                             <div className="flex justify-center">
-                                                {item.available === false ? (
+                                                {!user ? (
+                                                    // Show view-only message for non-logged-in users
+                                                    <div className="bg-gray-100 text-gray-600 px-6 py-3 rounded-lg font-medium text-sm shadow-lg min-w-[120px] text-center">
+                                                        👁️ View Only
+                                                    </div>
+                                                ) : item.available === false ? (
                                                     <button 
                                                         disabled
                                                         className="bg-gray-400 text-gray-600 px-6 py-3 rounded-lg cursor-not-allowed font-medium text-sm shadow-lg min-w-[120px]"
@@ -1303,7 +1317,7 @@ export default function Home() {
                                             <div className="flex-1">
                                                 <h4 className="font-bold text-lg">{item.name}</h4>
                                                 <p className="text-gray-600 text-sm">{item.description}</p>
-                                                <p className="text-indigo-600 font-semibold">৳{item.price.toFixed(2)} each</p>
+                                                <p className="text-indigo-600 font-semibold">৳{Math.round(item.price || 0)} each</p>
                                             </div>
                                             <div className="flex items-center space-x-3">
                                                 <button 
@@ -1327,7 +1341,7 @@ export default function Home() {
                                                 </button>
                                             </div>
                                             <div className="ml-4 text-right">
-                                                <p className="text-lg font-bold">৳{(item.price * item.quantity).toFixed(2)}</p>
+                                                <p className="text-lg font-bold">৳{Math.round((item.price * item.quantity || 0))}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -1336,7 +1350,7 @@ export default function Home() {
                                 <div className="border-t pt-6">
                                     <div className="flex justify-between items-center mb-6">
                                         <span className="text-2xl font-bold">Total:</span>
-                                        <span className="text-3xl font-bold text-indigo-600">৳{calculateTotal().toFixed(2)}</span>
+                                        <span className="text-3xl font-bold text-indigo-600">৳{Math.round(calculateTotal() || 0)}</span>
                                     </div>
                                     <div className="flex space-x-4">
                                         <button
@@ -1514,7 +1528,7 @@ export default function Home() {
                                 </div>
                                 
                                 <div className="bg-white rounded-lg p-4">
-                                    <p className="text-lg font-semibold mb-2">Order Total: ৳{currentOrder.totalAmount?.toFixed(2)}</p>
+                                    <p className="text-lg font-semibold mb-2">Order Total: ৳{Math.round(currentOrder.totalAmount || 0 || 0)}</p>
                                     <p className="text-gray-600">Items: {currentOrder.items?.length} items</p>
                                 </div>
                                 
@@ -1616,7 +1630,7 @@ export default function Home() {
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-xl font-bold text-indigo-600">৳{order.totalAmount?.toFixed(2)}</p>
+                                                <p className="text-xl font-bold text-indigo-600">৳{Math.round(order.totalAmount || 0)}</p>
                                                 <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
                                                     order.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
                                                     order.status === 'served' ? 'bg-indigo-100 text-indigo-800' :
@@ -2059,7 +2073,7 @@ export default function Home() {
                                                         </svg>
                                                     </div>
                                                     <p className="text-sm font-semibold text-purple-700 mb-1">Cart Total</p>
-                                                    <p className="text-2xl font-bold text-purple-600">৳{calculateTotal().toFixed(2)}</p>
+                                                    <p className="text-2xl font-bold text-purple-600">৳{Math.round(calculateTotal() || 0)}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -2145,7 +2159,7 @@ export default function Home() {
                                 />
                                 <div className="flex-1">
                                     <h4 className="font-medium text-sm">{item.name}</h4>
-                                    <p className="text-xs text-gray-600">৳{item.price.toFixed(2)} each</p>
+                                    <p className="text-xs text-gray-600">৳{Math.round(item.price || 0)} each</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <button 
@@ -2167,7 +2181,7 @@ export default function Home() {
                         
                         <div className="border-t pt-3">
                             <div className="flex justify-between font-bold text-lg mb-4">
-                                <span>Total: ৳{calculateTotal().toFixed(2)}</span>
+                                <span>Total: ৳{Math.round(calculateTotal() || 0)}</span>
                             </div>
                             <button 
                                 onClick={placeOrder}
@@ -2219,7 +2233,7 @@ export default function Home() {
                             </button>
                             <div className="absolute top-4 left-4 z-20">
                                 <span className="bg-white bg-opacity-90 backdrop-blur-sm text-indigo-600 px-4 py-2 rounded-full text-lg font-bold shadow-lg">
-                                    ৳{selectedItem.price?.toFixed(2) || '0.00'}
+                                    ৳{selectedItem.price?.toFixed(0) || '0.00'}
                                 </span>
                             </div>
                         </div>
@@ -2228,34 +2242,32 @@ export default function Home() {
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex-1">
                                     <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedItem.name}</h2>
-                                    {selectedItem.rating && (
-                                        <div className="flex items-center mb-3 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                                            <div className="flex items-center">
-                                                <span className="text-yellow-400 text-2xl">⭐</span>
-                                                <div className="ml-3">
-                                                    <div className="flex items-center">
-                                                        <span className="text-xl font-bold text-gray-800">
-                                                            {Number(selectedItem.rating).toFixed(1)}
-                                                        </span>
-                                                        <span className="text-gray-600 ml-2">/ 5.0</span>
-                                                    </div>
-                                                    <div className="text-sm text-gray-600">
-                                                        {selectedItem.reviewCount ? 
-                                                            `Based on ${selectedItem.reviewCount} user reviews` : 
-                                                            'User Rating'
-                                                        }
-                                                    </div>
+                                    <div className="flex items-center mb-3 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                        <div className="flex items-center">
+                                            <span className="text-yellow-400 text-2xl">⭐</span>
+                                            <div className="ml-3">
+                                                <div className="flex items-center">
+                                                    <span className="text-xl font-bold text-gray-800">
+                                                        {Number(selectedItem.rating || 0).toFixed(1)}
+                                                    </span>
+                                                    <span className="text-gray-600 ml-2">/ 5.0</span>
+                                                </div>
+                                                <div className="text-sm text-gray-600">
+                                                    {selectedItem.reviewCount && selectedItem.reviewCount > 0 ? 
+                                                        `Based on ${selectedItem.reviewCount} user reviews` : 
+                                                        'No reviews yet'
+                                                    }
                                                 </div>
                                             </div>
-                                            {selectedItem.rating >= 4.5 && (
-                                                <div className="ml-auto">
-                                                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                                        🏆 Highly Rated
-                                                    </span>
-                                                </div>
-                                            )}
                                         </div>
-                                    )}
+                                        {selectedItem.rating >= 4.5 && (
+                                            <div className="ml-auto">
+                                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                                                    🏆 Highly Rated
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                             
@@ -2299,47 +2311,74 @@ export default function Home() {
                             )}
                             
                             <div className="border-t pt-6">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center space-x-4">
-                                        <span className="text-lg font-medium text-gray-700">Quantity:</span>
-                                        <div className="flex items-center space-x-3">
-                                            <button 
-                                                onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                                                className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center text-lg font-medium transition-colors"
+                                {user ? (
+                                    <>
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="flex items-center space-x-4">
+                                                <span className="text-lg font-medium text-gray-700">Quantity:</span>
+                                                <div className="flex items-center space-x-3">
+                                                    <button 
+                                                        onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                                                        className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center text-lg font-medium transition-colors"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="text-xl font-bold w-12 text-center">{itemQuantity}</span>
+                                                    <button 
+                                                        onClick={() => setItemQuantity(itemQuantity + 1)}
+                                                        className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center text-lg font-medium transition-colors"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm text-gray-600">Total</p>
+                                                <p className="text-2xl font-bold text-indigo-600">
+                                                    ৳{Math.round((selectedItem.price * itemQuantity || 0))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex space-x-4">
+                                            <button
+                                                onClick={closeItemDetails}
+                                                className="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors font-bold"
                                             >
-                                                -
+                                                Close
                                             </button>
-                                            <span className="text-xl font-bold w-12 text-center">{itemQuantity}</span>
                                             <button 
-                                                onClick={() => setItemQuantity(itemQuantity + 1)}
-                                                className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center text-lg font-medium transition-colors"
+                                                onClick={addItemToCart}
+                                                className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors font-bold"
                                             >
-                                                +
+                                                🛒 Add ৳{Math.round((selectedItem.price * itemQuantity || 0))} to Cart
                                             </button>
                                         </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center">
+                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-4">
+                                            <p className="text-gray-600 mb-2">Sign in to add items to cart and place orders</p>
+                                            <p className="text-lg font-bold text-gray-800">
+                                                Price: ৳{Math.round(selectedItem.price)}
+                                            </p>
+                                        </div>
+                                        <div className="flex space-x-4">
+                                            <button
+                                                onClick={closeItemDetails}
+                                                className="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors font-bold"
+                                            >
+                                                Close
+                                            </button>
+                                            <a
+                                                href="/login"
+                                                className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors font-bold text-center inline-block"
+                                            >
+                                                Sign In to Order
+                                            </a>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm text-gray-600">Total</p>
-                                        <p className="text-2xl font-bold text-indigo-600">
-                                            ৳{(selectedItem.price * itemQuantity).toFixed(2)}
-                                        </p>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex space-x-4">
-                                    <button
-                                        onClick={closeItemDetails}
-                                        className="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors font-bold"
-                                    >
-                                        Close
-                                    </button>
-                                    <button 
-                                        onClick={addItemToCart}
-                                        className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors font-bold"
-                                    >
-                                        🛒 Add ৳{(selectedItem.price * itemQuantity).toFixed(2)} to Cart
-                                    </button>
-                                </div>
+                                )}
                                 
                                 {/* Cart Status and Actions */}
                                 {cart.some(cartItem => cartItem.id === selectedItem.id) && (
@@ -2353,7 +2392,7 @@ export default function Home() {
                                             </span>
                                         </div>
                                         <div className="text-xs text-green-700 mb-3">
-                                            Total cart value: ৳{cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2)}
+                                            Total cart value: ৳{Math.round(cart.reduce((total, item) => total + (item.price * item.quantity), 0) || 0)}
                                         </div>
                                         <div className="flex space-x-2">
                                             <button

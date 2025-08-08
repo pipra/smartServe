@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth } from '../authentication/firebase'
+import { db, auth } from '../../services/firebase/config.js'
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
 
@@ -416,7 +416,7 @@ function Cashier() {
                               </div>
                               <div className="text-center">
                                 <p className="text-2xl font-bold text-green-600">
-                                  ৳{getWaiterOrders(selectedWaiter).reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0).toFixed(0)}
+                                  ৳{Math.round(getWaiterOrders(selectedWaiter).reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0))}
                                 </p>
                                 <p className="text-sm text-gray-600">Total Amount</p>
                               </div>
@@ -490,7 +490,7 @@ function Cashier() {
                                       </div>
                                       <div className="text-right ml-4">
                                         <p className="text-xl font-bold text-teal-600">
-                                          ৳{(item.price * item.quantity).toFixed(0)}
+                                          ৳{Math.round((item.price * item.quantity))}
                                         </p>
                                         <p className="text-sm text-gray-500">
                                           {item.quantity} × ৳{item.price}
@@ -509,7 +509,7 @@ function Cashier() {
                                 <div className="flex justify-between items-center">
                                   <span className="text-lg font-semibold text-gray-900">Order Total:</span>
                                   <span className="text-2xl font-bold text-teal-600">
-                                    ৳{order.totalAmount?.toFixed(0) || order.total?.toFixed(0) || '0'}
+                                    ৳{Math.round(order.totalAmount || order.total || 0)}
                                   </span>
                                 </div>
                               </div>
@@ -608,7 +608,7 @@ function Cashier() {
                               <p className="text-sm text-gray-600">Recent Orders:</p>
                               <div className="bg-green-50 px-3 py-1 rounded-lg">
                                 <p className="text-sm font-bold text-green-700">
-                                  Total Amount: ৳{totalCost.toFixed(0)}
+                                  Total Amount: ৳{Math.round(totalCost)}
                                 </p>
                               </div>
                             </div>
@@ -616,7 +616,7 @@ function Cashier() {
                               {userOrders.slice(0, 3).map((order) => (
                                 <div key={order.id} className="bg-gray-100 px-3 py-1 rounded-full text-sm flex items-center space-x-2">
                                   <span className="text-gray-700">#{order.id.substring(0, 6)}</span>
-                                  <span className="text-teal-600 font-medium">৳{order.totalAmount?.toFixed(0) || order.total?.toFixed(0)}</span>
+                                  <span className="text-teal-600 font-medium">৳{Math.round(order.totalAmount || order.total || 0)}</span>
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                     order.status === 'billing' ? 'bg-purple-100 text-purple-800' :
                                     order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
@@ -704,7 +704,7 @@ function Cashier() {
                                   <div className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium mb-2">
                                     Qty: {item.quantity}
                                   </div>
-                                  <p className="text-lg font-bold text-gray-900">৳{(item.price * item.quantity).toFixed(0)}</p>
+                                  <p className="text-lg font-bold text-gray-900">৳{Math.round((item.price * item.quantity))}</p>
                                 </div>
                               </div>
                             </div>
@@ -713,7 +713,7 @@ function Cashier() {
                         <div className="mt-6 pt-4 border-t-2 border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4">
                           <div className="flex justify-between items-center">
                             <span className="text-xl font-bold text-gray-900">Total Amount:</span>
-                            <span className="text-2xl font-bold text-teal-600">৳{selectedOrderForBilling.totalAmount?.toFixed(0) || selectedOrderForBilling.total?.toFixed(0)}</span>
+                            <span className="text-2xl font-bold text-teal-600">৳{Math.round(selectedOrderForBilling.totalAmount || selectedOrderForBilling.total || 0)}</span>
                           </div>
                         </div>
                       </div>
@@ -881,7 +881,7 @@ function Cashier() {
                             {/* Order Details */}
                             <div className="text-right space-y-1">
                               <div className="text-2xl font-bold text-green-600">
-                                ৳{(order.totalAmount || order.total || 0).toFixed(0)}
+                                ৳{Math.round((order.totalAmount || order.total || 0))}
                               </div>
                               <div className="text-sm text-gray-500">
                                 Completed: {order.completedAt ? 
@@ -915,7 +915,7 @@ function Cashier() {
                                 <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm flex items-center space-x-2">
                                   <span className="text-gray-700">{item.name}</span>
                                   <span className="text-xs text-gray-500">×{item.quantity}</span>
-                                  <span className="text-teal-600 font-medium">৳{(item.price * item.quantity).toFixed(0)}</span>
+                                  <span className="text-teal-600 font-medium">৳{Math.round((item.price * item.quantity))}</span>
                                 </div>
                               )) || (
                                 <span className="text-gray-400 text-sm">No items listed</span>
@@ -1072,7 +1072,7 @@ function Cashier() {
                             // Set logout flag to prevent auto-redirect
                             sessionStorage.setItem('justLoggedOut', 'true')
                             await signOut(auth)
-                            window.location.href = '/login'
+                            window.location.href = '/'
                           } catch (error) {
                             console.error('Error signing out:', error)
                           }

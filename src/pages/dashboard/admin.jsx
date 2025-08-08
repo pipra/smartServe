@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth } from '../authentication/firebase'
+import { db, auth } from '../../services/firebase/config.js'
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, onSnapshot, addDoc, orderBy, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
-import MenuManagement from '../components/MenuManagement'
-import SampleDataLoader from '../components/SampleDataLoader'
+import MenuManagement from '../../components/common/MenuManagement'
+import SampleDataLoader from '../../utils/SampleDataLoader'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -675,7 +675,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="ml-4">
                         <h3 className="text-sm font-medium text-green-800">Total Revenue</h3>
-                        <p className="text-2xl font-bold text-green-600">৳{analytics.totalRevenue.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-green-600">৳{Math.round(analytics.totalRevenue)}</p>
                       </div>
                     </div>
                   </div>
@@ -699,7 +699,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="ml-4">
                         <h3 className="text-sm font-medium text-purple-800">Avg. Order Value</h3>
-                        <p className="text-2xl font-bold text-purple-600">৳{analytics.averageOrderValue.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-purple-600">৳{Math.round(analytics.averageOrderValue)}</p>
                       </div>
                     </div>
                   </div>
@@ -872,7 +872,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center space-x-4">
                               <div className="text-right">
                                 <p className="font-bold text-gray-900 text-lg">
-                                  ৳{(order.totalAmount || Math.random() * 500 + 100).toFixed(2)}
+                                  ৳{Math.round(order.totalAmount || Math.random() * 500 + 100)}
                                 </p>
                                 <p className="text-sm text-gray-500">
                                   {order.items?.length || Math.floor(Math.random() * 5) + 1} items

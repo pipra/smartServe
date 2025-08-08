@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { auth, db } from '../authentication/firebase'
+import { auth, db } from '../../services/firebase/config.js'
 import { signOut } from 'firebase/auth'
 import { doc, getDoc, collection, onSnapshot, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -331,7 +331,7 @@ function Waiter() {
       // Set logout flag to prevent auto-redirect
       sessionStorage.setItem('justLoggedOut', 'true')
       await signOut(auth)
-      window.location.href = '/login'
+      window.location.href = '/'
     } catch (error) {
       console.error('Error signing out:', error)
     }
@@ -610,9 +610,9 @@ function Waiter() {
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-600">Today's Sales</p>
                       <p className="text-2xl font-semibold text-gray-900">
-                        ৳{orders
+                        ৳{Math.round(orders
                           .filter(order => order.status === 'confirmed' || order.status === 'ready' || order.status === 'served' || order.status === 'completed')
-                          .reduce((sum, order) => sum + (order.totalAmount || 0), 0)}
+                          .reduce((sum, order) => sum + (order.totalAmount || 0), 0))}
                       </p>
                       <p className="text-xs text-gray-500">
                         From confirmed orders only
@@ -735,7 +735,7 @@ function Waiter() {
                                 
                                 {/* Order Total */}
                                 <div className="text-right">
-                                  <p className="text-2xl font-bold text-green-600">৳{order.totalAmount || 0}</p>
+                                  <p className="text-2xl font-bold text-green-600">৳{Math.round(order.totalAmount || 0)}</p>
                                   <p className="text-xs text-gray-500">Total Amount</p>
                                 </div>
                               </div>
@@ -758,7 +758,7 @@ function Waiter() {
                                         </div>
                                         <span className="font-medium text-gray-900">{item.name}</span>
                                       </div>
-                                      <span className="text-gray-600 font-semibold">৳{item.price * item.quantity}</span>
+                                      <span className="text-gray-600 font-semibold">৳{Math.round(item.price * item.quantity)}</span>
                                     </div>
                                   )) || (
                                     <div className="text-gray-500 text-sm italic col-span-2">No items listed</div>
@@ -1361,7 +1361,7 @@ function Waiter() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-3xl font-bold text-green-600">৳{user.totalAmount}</p>
+                                <p className="text-3xl font-bold text-green-600">৳{Math.round(user.totalAmount)}</p>
                                 <p className="text-xs text-green-500">
                                   Avg: ৳{user.totalOrders > 0 ? Math.round(user.totalAmount / user.totalOrders) : 0}
                                 </p>
@@ -1550,7 +1550,7 @@ function Waiter() {
                           {displayOrders.filter(order => order.status === 'pending').length}
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
-                          ৳{displayOrders.filter(order => order.status === 'pending').reduce((sum, order) => sum + (order.totalAmount || 0), 0)}
+                          ৳{Math.round(displayOrders.filter(order => order.status === 'pending').reduce((sum, order) => sum + (order.totalAmount || 0), 0))}
                         </p>
                       </div>
                       
@@ -1566,10 +1566,10 @@ function Waiter() {
                           ).length}
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
-                          ৳{displayOrders.filter(order => 
+                          ৳{Math.round(displayOrders.filter(order => 
                             order.status === 'confirmed' || 
                             order.status === 'preparing'
-                          ).reduce((sum, order) => sum + (order.totalAmount || 0), 0)}
+                          ).reduce((sum, order) => sum + (order.totalAmount || 0), 0))}
                         </p>
                       </div>
                       
@@ -1582,7 +1582,7 @@ function Waiter() {
                           {displayOrders.filter(order => order.status === 'ready').length}
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
-                          ৳{displayOrders.filter(order => order.status === 'ready').reduce((sum, order) => sum + (order.totalAmount || 0), 0)}
+                          ৳{Math.round(displayOrders.filter(order => order.status === 'ready').reduce((sum, order) => sum + (order.totalAmount || 0), 0))}
                         </p>
                       </div>
                       
@@ -1595,7 +1595,7 @@ function Waiter() {
                           {displayOrders.filter(order => order.status === 'served').length}
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
-                          ৳{displayOrders.filter(order => order.status === 'served').reduce((sum, order) => sum + (order.totalAmount || 0), 0)}
+                          ৳{Math.round(displayOrders.filter(order => order.status === 'served').reduce((sum, order) => sum + (order.totalAmount || 0), 0))}
                         </p>
                       </div>
                       

@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { auth, db } from '../../services/firebase/config.js'
 
-function WaiterSignUp() {
+function ChefSignUp() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -12,7 +12,8 @@ function WaiterSignUp() {
     confirmPassword: '',
     phone: '',
     experience: '',
-    shift: 'morning'
+    specialization: '',
+    preferredShift: 'morning'
   })
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -58,25 +59,26 @@ function WaiterSignUp() {
         formData.password
       )
       
-      // Store waiter user data in Firestore
-      await setDoc(doc(db, 'Waiters', userCredential.user.uid), {
+      // Store chef user data in Firestore
+      await setDoc(doc(db, 'Chefs', userCredential.user.uid), {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         experience: formData.experience,
-        preferredShift: formData.shift,
-        role: 'waiter',
+        specialization: formData.specialization,
+        preferredShift: formData.preferredShift,
+        role: 'chef',
         createdAt: new Date().toISOString(),
         uid: userCredential.user.uid,
         status: 'pending', // Account pending admin approval
         approval: false
       })
 
-      console.log('Waiter account created successfully! Pending admin approval.')
+      console.log('Chef account created successfully! Pending admin approval.')
       // Show success message instead of immediate redirect
       setError('')
-      alert('Account created successfully! Your account is pending admin approval. You will be able to login once an admin approves your account.')
+      alert('Account created successfully! Your chef account is pending admin approval. You will be able to login once an admin approves your account.')
       window.location.href = '/login'
     } catch (error) {
       setError(error.message)
@@ -86,17 +88,17 @@ function WaiterSignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Join as Waiter</h1>
-          <p className="text-gray-600">Create your waiter account to start serving</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Join as Chef</h1>
+          <p className="text-gray-600">Create your chef account to start cooking</p>
         </div>
 
         {/* Sign Up Form */}
@@ -109,52 +111,37 @@ function WaiterSignUp() {
               </div>
             )}
 
-            {/* Name Fields - First and Last in one row */}
+            {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2 text-left">
                   First Name
                 </label>
-                <div className="relative">
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    required
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 pl-11"
-                    placeholder="First name"
-                  />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                </div>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  required
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
+                  placeholder="First name"
+                />
               </div>
-
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2 text-left">
                   Last Name
                 </label>
-                <div className="relative">
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    required
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 pl-11"
-                    placeholder="Last name"
-                  />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                </div>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  required
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
+                  placeholder="Last name"
+                />
               </div>
             </div>
 
@@ -171,7 +158,7 @@ function WaiterSignUp() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 pl-11"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200 pl-11"
                   placeholder="Enter your email"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -195,7 +182,7 @@ function WaiterSignUp() {
                   required
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 pl-11"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200 pl-11"
                   placeholder="Enter your phone number"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -209,7 +196,7 @@ function WaiterSignUp() {
             {/* Experience Field */}
             <div>
               <label htmlFor="experience" className="block text-sm font-medium text-gray-700 mb-2 text-left">
-                Experience Level
+                Cooking Experience
               </label>
               <select
                 id="experience"
@@ -217,31 +204,57 @@ function WaiterSignUp() {
                 required
                 value={formData.experience}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
               >
                 <option value="">Select your experience level</option>
-                <option value="beginner">Beginner (0-1 years)</option>
-                <option value="intermediate">Intermediate (1-3 years)</option>
-                <option value="experienced">Experienced (3-5 years)</option>
-                <option value="expert">Expert (5+ years)</option>
+                <option value="beginner">Beginner (0-2 years)</option>
+                <option value="intermediate">Intermediate (2-5 years)</option>
+                <option value="experienced">Experienced (5-10 years)</option>
+                <option value="expert">Expert (10+ years)</option>
+              </select>
+            </div>
+
+            {/* Specialization Field */}
+            <div>
+              <label htmlFor="specialization" className="block text-sm font-medium text-gray-700 mb-2 text-left">
+                Culinary Specialization
+              </label>
+              <select
+                id="specialization"
+                name="specialization"
+                required
+                value={formData.specialization}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
+              >
+                <option value="">Select your specialization</option>
+                <option value="italian">Italian Cuisine</option>
+                <option value="french">French Cuisine</option>
+                <option value="asian">Asian Cuisine</option>
+                <option value="american">American Cuisine</option>
+                <option value="mediterranean">Mediterranean Cuisine</option>
+                <option value="pastry">Pastry & Desserts</option>
+                <option value="grill">Grill & BBQ</option>
+                <option value="vegetarian">Vegetarian/Vegan</option>
+                <option value="general">General Cooking</option>
               </select>
             </div>
 
             {/* Preferred Shift */}
             <div>
-              <label htmlFor="shift" className="block text-sm font-medium text-gray-700 mb-2 text-left">
+              <label htmlFor="preferredShift" className="block text-sm font-medium text-gray-700 mb-2 text-left">
                 Preferred Shift
               </label>
               <select
-                id="shift"
-                name="shift"
-                value={formData.shift}
+                id="preferredShift"
+                name="preferredShift"
+                value={formData.preferredShift}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200"
               >
-                <option value="morning">Morning (8 AM - 4 PM)</option>
-                <option value="evening">Evening (4 PM - 12 AM)</option>
-                <option value="night">Night (12 AM - 8 AM)</option>
+                <option value="morning">Morning (6 AM - 2 PM)</option>
+                <option value="afternoon">Afternoon (2 PM - 10 PM)</option>
+                <option value="night">Night (10 PM - 6 AM)</option>
                 <option value="flexible">Flexible</option>
               </select>
             </div>
@@ -259,7 +272,7 @@ function WaiterSignUp() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 pl-11 pr-11"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200 pl-11 pr-11"
                   placeholder="Enter your password"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -296,7 +309,7 @@ function WaiterSignUp() {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 pl-11 pr-11"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors duration-200 pl-11 pr-11"
                   placeholder="Confirm your password"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -324,7 +337,7 @@ function WaiterSignUp() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isLoading ? (
                 <>
@@ -335,7 +348,7 @@ function WaiterSignUp() {
                   Creating Account...
                 </>
               ) : (
-                'Create Waiter Account'
+                'Create Chef Account'
               )}
             </button>
           </form>
@@ -344,7 +357,7 @@ function WaiterSignUp() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <a href="/login" className="font-medium text-green-600 hover:text-green-500">
+              <a href="/login" className="font-medium text-orange-600 hover:text-orange-500">
                 Sign In
               </a>
             </p>
@@ -355,4 +368,4 @@ function WaiterSignUp() {
   )
 }
 
-export default WaiterSignUp
+export default ChefSignUp

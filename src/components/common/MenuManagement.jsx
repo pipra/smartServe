@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { db } from '../authentication/firebase'
+import { db } from '../../services/firebase/config.js'
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore'
 
 export default function MenuManagement({ onDataChange }) {
@@ -166,6 +166,7 @@ export default function MenuManagement({ onDataChange }) {
         ...formData,
         price: parseFloat(formData.price),
         image: formData.imageUrl,
+        rating: 0,
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -1044,75 +1045,115 @@ export default function MenuManagement({ onDataChange }) {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Enhanced Edit Menu Item Modal with Beautiful Design */}
       {isEditModalOpen && selectedItem && (
-        <div className="modal modal-open">
-          <div className="modal-box w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">✏️</span>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-800">Edit Menu Item</h3>
-                  <p className="text-gray-600">Update details for "{selectedItem.name}"</p>
-                </div>
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+            {/* Beautiful Backdrop with Blur Effect */}
+            <div 
+              className="fixed inset-0 bg-gradient-to-br from-amber-900/80 via-orange-900/70 to-red-900/80 backdrop-blur-sm transition-opacity" 
+              onClick={() => {
+                setIsEditModalOpen(false)
+                setSelectedItem(null)
+                resetForm()
+              }}
+            ></div>
+
+            {/* Modal Content with Stunning Design */}
+            <div className="inline-block align-bottom bg-white rounded-3xl px-8 pt-8 pb-6 text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full border-4 border-gradient-to-r from-amber-200 to-red-200">
+            {/* Premium Header with Beautiful Gradient */}
+            <div className="relative bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 p-12 rounded-t-3xl overflow-hidden">
+              {/* Background Pattern Elements */}
+              <div className="absolute inset-0">
+                <div className="absolute top-0 left-0 w-32 h-32 bg-white/20 rounded-full -translate-x-16 -translate-y-16"></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/30 rounded-full translate-x-12 -translate-y-12"></div>
+                <div className="absolute bottom-0 left-1/2 w-40 h-40 bg-white/10 rounded-full -translate-x-20 translate-y-20"></div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditModalOpen(false)
-                  setSelectedItem(null)
-                  resetForm()
-                }}
-                className="btn btn-ghost btn-circle btn-sm"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  {/* Beautiful Icon Container */}
+                  <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center shadow-2xl transform hover:scale-110 transition-all duration-300 border-2 border-white/30">
+                    <span className="text-5xl filter drop-shadow-lg">✏️</span>
+                  </div>
+                  <div>
+                    <h3 className="text-5xl font-black text-white mb-3 drop-shadow-lg">
+                      Edit Menu Item
+                    </h3>
+                    <p className="text-white/90 font-semibold text-xl drop-shadow-md">
+                      ⚡ Update details for "{selectedItem.name}"
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Premium Close Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false)
+                    setSelectedItem(null)
+                    resetForm()
+                  }}
+                  className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white rounded-full p-4 shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 hover:rotate-90 border border-white/30"
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleEdit} className="space-y-6">
+            {/* Premium Form Content */}
+
+            <form onSubmit={handleEdit} className="space-y-8">
+              
               {/* Basic Information Section */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <span className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-white text-sm">📝</span>
-                  </span>
-                  Basic Information
-                </h4>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center">
-                      <span className="mr-2">🏷️</span>
-                      Item Name
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Grilled Salmon with Herbs"
-                      className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-amber-600 to-orange-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
+                <div className="relative bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
+                  <div className="flex items-center mb-8">
+                    <div className="w-12 h-12 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                      <span className="text-2xl">📝</span>
+                    </div>
+                    <h4 className="text-2xl font-bold bg-gradient-to-r from-amber-700 to-orange-600 bg-clip-text text-transparent">
+                      Basic Information
+                    </h4>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center">
-                      <span className="mr-2">💰</span>
-                      Price (BDT)
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                      <label className="text-xl font-bold text-gray-800 flex items-center">
+                        <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                          <span className="text-lg">🏷️</span>
+                        </div>
+                        Item Name
+                        <span className="text-red-500 ml-3 text-2xl">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Premium Grilled Salmon with Herbs ✨"
+                        className="w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-6 py-4 text-lg font-medium focus:border-emerald-500 focus:bg-white transition-all duration-300 placeholder-gray-400 shadow-inner"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-xl font-bold text-gray-800 flex items-center">
+                        <div className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                          <span className="text-lg">💰</span>
+                        </div>
+                        Price (BDT)
+                        <span className="text-red-500 ml-3 text-2xl">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-1 rounded-lg font-bold text-lg shadow-md">
+                          ৳
+                        </div>
                       <input
                         type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        className="input input-bordered w-full pl-8 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="150"
+                        className="w-full bg-gray-50 border-2 border-gray-200 rounded-2xl pl-16 pr-6 py-4 text-lg font-medium focus:border-yellow-500 focus:bg-white transition-all duration-300 placeholder-gray-400 shadow-inner"
                         value={formData.price}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                         required
@@ -1120,213 +1161,267 @@ export default function MenuManagement({ onDataChange }) {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="mt-6 space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center">
-                    <span className="mr-2">📂</span>
-                    Category
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <select
-                    className="select select-bordered w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <option value="">Select a category</option>
-                    {getMainCategories().map(category => (
-                      <option key={category.id} value={category.name}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Subcategory Field */}
-                {formData.category && getSubCategories(formData.category).length > 0 && (
-                  <div className="mt-6 space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center">
-                      <span className="mr-2">📂</span>
-                      Subcategory
-                    </label>
-                    <select
-                      className="select select-bordered w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      value={formData.subcategory}
-                      onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-                    >
-                      <option value="">No subcategory</option>
-                      {getSubCategories(formData.category).map(subcat => (
-                        <option key={subcat.id} value={subcat.name}>
-                          {subcat.name}
-                        </option>
-                      ))}
-                    </select>
+              {/* Category Section */}
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
+                <div className="relative bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
+                  <div className="flex items-center mb-8">
+                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                      <span className="text-2xl">📱</span>
+                    </div>
+                    <h4 className="text-2xl font-bold bg-gradient-to-r from-purple-700 to-indigo-600 bg-clip-text text-transparent">
+                      Category Information
+                    </h4>
                   </div>
-                )}
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <label className="text-xl font-bold text-gray-800 flex items-center">
+                        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                          <span className="text-lg">📂</span>
+                        </div>
+                        Category
+                        <span className="text-red-500 ml-3 text-2xl">*</span>
+                      </label>
+                      <select
+                        className="w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-6 py-4 text-lg font-medium focus:border-purple-500 focus:bg-white transition-all duration-300 shadow-inner"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      >
+                        <option value="" className="text-gray-400">Choose a category ✨</option>
+                        {getMainCategories().map(category => (
+                          <option key={category.id} value={category.name}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="mt-6 space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center">
-                    <span className="mr-2">📄</span>
-                    Description
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <textarea
-                    className="textarea textarea-bordered w-full h-24 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Describe the dish ingredients, preparation, and what makes it special..."
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    required
-                  ></textarea>
-                  <div className="text-xs text-gray-500 text-right">
-                    {formData.description.length}/200 characters
+                    {/* Subcategory Field */}
+                    {formData.category && getSubCategories(formData.category).length > 0 && (
+                      <div className="space-y-3">
+                        <label className="text-xl font-bold text-gray-800 flex items-center">
+                          <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                            <span className="text-lg">🏷️</span>
+                          </div>
+                          Subcategory
+                        </label>
+                        <select
+                          className="w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-6 py-4 text-lg font-medium focus:border-teal-500 focus:bg-white transition-all duration-300 shadow-inner"
+                          value={formData.subcategory}
+                          onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                        >
+                          <option value="" className="text-gray-400">No subcategory ✨</option>
+                          {getSubCategories(formData.category).map(subcat => (
+                            <option key={subcat.id} value={subcat.name}>
+                              {subcat.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-3">
+                      <label className="text-xl font-bold text-gray-800 flex items-center">
+                        <div className="w-8 h-8 bg-gradient-to-r from-rose-500 to-pink-500 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                          <span className="text-lg">�</span>
+                        </div>
+                        Description
+                        <span className="text-red-500 ml-3 text-2xl">*</span>
+                      </label>
+                      <textarea
+                        className="w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-6 py-4 text-lg font-medium focus:border-rose-500 focus:bg-white transition-all duration-300 placeholder-gray-400 shadow-inner min-h-[120px] resize-none"
+                        placeholder="Tell us what makes this dish special... ✨"
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        required
+                      ></textarea>
+                      <div className="text-sm text-gray-500 text-right font-medium">
+                        {formData.description.length}/200 characters
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+              </div>
 
               {/* Image URL Section */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <span className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-white text-sm">📸</span>
-                  </span>
-                  Update Image URL
-                </h4>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Food Image URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://example.com/image.jpg"
-                      className="input input-bordered w-full"
-                      value={formData.imageUrl}
-                      onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                    />
-                    <p className="text-xs text-gray-500 mt-2">Enter a direct link to the food image</p>
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
+                <div className="relative bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
+                  <div className="flex items-center mb-8">
+                    <div className="w-12 h-12 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                      <span className="text-2xl">�️</span>
+                    </div>
+                    <h4 className="text-2xl font-bold bg-gradient-to-r from-violet-700 to-purple-600 bg-clip-text text-transparent">
+                      Image & Visual
+                    </h4>
                   </div>
                   
-                  {formData.imageUrl && (
-                    <div className="border-2 border-dashed border-purple-300 rounded-xl p-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Image Preview:</p>
-                      <div className="w-32 h-32 mx-auto rounded-lg overflow-hidden">
-                        <img 
-                          src={formData.imageUrl} 
-                          alt="Preview" 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                            e.target.nextSibling.style.display = 'flex'
-                          }}
-                        />
-                        <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500 text-sm" style={{display: 'none'}}>
-                          Invalid image URL
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <label className="text-xl font-bold text-gray-800 flex items-center">
+                        <div className="w-8 h-8 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                          <span className="text-lg">📸</span>
+                        </div>
+                        Food Image URL
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://example.com/delicious-food.jpg ✨"
+                        className="w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-6 py-4 text-lg font-medium focus:border-violet-500 focus:bg-white transition-all duration-300 placeholder-gray-400 shadow-inner"
+                        value={formData.imageUrl}
+                        onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                      />
+                      <p className="text-sm text-gray-500 font-medium">Enter a direct link to showcase your delicious food item</p>
+                    </div>
+                    
+                    {formData.imageUrl && (
+                      <div className="bg-gradient-to-r from-violet-50 to-purple-50 border-2 border-dashed border-violet-300 rounded-2xl p-6">
+                        <p className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                          <span className="mr-2">👀</span>
+                          Image Preview:
+                        </p>
+                        <div className="w-40 h-40 mx-auto rounded-2xl overflow-hidden shadow-xl">
+                          <img 
+                            src={formData.imageUrl} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+                            onError={(e) => {
+                              e.target.style.display = 'none'
+                              e.target.nextSibling.style.display = 'flex'
+                            }}
+                          />
+                          <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center text-gray-500 text-lg font-medium" style={{display: 'none'}}>
+                            ❌ Invalid image URL
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Properties Section */}
-              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <span className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-white text-sm">⚙️</span>
-                  </span>
-                  Item Properties
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white rounded-lg p-4 border-2 border-green-200 hover:border-green-300 transition-colors">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-success checkbox-lg"
-                        checked={formData.isVegetarian}
-                        onChange={(e) => setFormData({ ...formData, isVegetarian: e.target.checked })}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-2xl">🌱</span>
-                          <span className="font-medium text-gray-800">Vegetarian</span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">Plant-based ingredients only</p>
-                      </div>
-                    </label>
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
+                <div className="relative bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
+                  <div className="flex items-center mb-8">
+                    <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                      <span className="text-2xl">⚙️</span>
+                    </div>
+                    <h4 className="text-2xl font-bold bg-gradient-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">
+                      Item Properties & Settings
+                    </h4>
                   </div>
-
-                  <div className="bg-white rounded-lg p-4 border-2 border-red-200 hover:border-red-300 transition-colors">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-error checkbox-lg"
-                        checked={formData.isSpicy}
-                        onChange={(e) => setFormData({ ...formData, isSpicy: e.target.checked })}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-2xl">🌶️</span>
-                          <span className="font-medium text-gray-800">Spicy</span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">Contains hot spices</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="relative group">
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
+                      <div className="relative bg-white rounded-2xl p-6 border-2 border-green-200 hover:border-green-300 transition-all duration-300 shadow-lg">
+                        <label className="flex items-center space-x-4 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-6 h-6 text-green-600 bg-gray-100 border-gray-300 rounded-lg focus:ring-green-500 focus:ring-2"
+                            checked={formData.isVegetarian}
+                            onChange={(e) => setFormData({ ...formData, isVegetarian: e.target.checked })}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <span className="text-3xl">🌱</span>
+                              <span className="text-xl font-bold text-gray-800">Vegetarian</span>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-2 font-medium">Made with plant-based ingredients only</p>
+                          </div>
+                        </label>
                       </div>
-                    </label>
-                  </div>
+                    </div>
 
-                  <div className="bg-white rounded-lg p-4 border-2 border-blue-200 hover:border-blue-300 transition-colors">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-primary checkbox-lg"
-                        checked={formData.isVisible}
-                        onChange={(e) => setFormData({ ...formData, isVisible: e.target.checked })}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-2xl">👁️</span>
-                          <span className="font-medium text-gray-800">Visible</span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">Show to customers</p>
+                    <div className="relative group">
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 to-orange-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
+                      <div className="relative bg-white rounded-2xl p-6 border-2 border-red-200 hover:border-red-300 transition-all duration-300 shadow-lg">
+                        <label className="flex items-center space-x-4 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-6 h-6 text-red-600 bg-gray-100 border-gray-300 rounded-lg focus:ring-red-500 focus:ring-2"
+                            checked={formData.isSpicy}
+                            onChange={(e) => setFormData({ ...formData, isSpicy: e.target.checked })}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <span className="text-3xl">🌶️</span>
+                              <span className="text-xl font-bold text-gray-800">Spicy</span>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-2 font-medium">Contains hot spices and peppers</p>
+                          </div>
+                        </label>
                       </div>
-                    </label>
+                    </div>
+
+                    <div className="relative group">
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-300"></div>
+                      <div className="relative bg-white rounded-2xl p-6 border-2 border-blue-200 hover:border-blue-300 transition-all duration-300 shadow-lg">
+                        <label className="flex items-center space-x-4 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded-lg focus:ring-blue-500 focus:ring-2"
+                            checked={formData.isVisible}
+                            onChange={(e) => setFormData({ ...formData, isVisible: e.target.checked })}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <span className="text-3xl">👁️</span>
+                              <span className="text-xl font-bold text-gray-800">Visible</span>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-2 font-medium">Show this item to customers</p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+              <div className="flex justify-end space-x-6 pt-8 border-t-2 border-gray-200">
                 <button
                   type="button"
-                  className="btn btn-outline btn-lg px-8"
+                  className="px-10 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center"
                   onClick={() => {
                     setIsEditModalOpen(false)
                     setSelectedItem(null)
                     resetForm()
                   }}
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary btn-lg px-8 shadow-lg hover:shadow-xl transition-all"
+                  className="px-10 py-4 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-white font-bold text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   disabled={loading}
                 >
                   {loading ? (
                     <>
-                      <span className="loading loading-spinner loading-sm mr-2"></span>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
                       Updating Item...
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Update Item
+                      Update Menu Item ✨
                     </>
                   )}
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
@@ -1531,7 +1626,7 @@ export default function MenuManagement({ onDataChange }) {
           </div>
         </div>
       )}
-    </div>
+      </div>
     </div>
   )
 }
